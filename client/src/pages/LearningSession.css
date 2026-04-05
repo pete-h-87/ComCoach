@@ -1,0 +1,161 @@
+.learning-session {
+  position: relative;
+  min-height: calc(100vh - 4rem);
+  background: #7b95ac;
+  border-radius: 16px;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Central reading panel */
+.reading-panel {
+  width: 45%;
+  min-height: 300px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #222;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 1;
+}
+
+.reading-panel h3 {
+  margin: 0 0 1rem;
+  font-size: 1.3rem;
+}
+
+.reading-panel p {
+  margin: 0;
+}
+
+/* SVG connector lines layer */
+.connector-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Annotation cards in the margins */
+.annotation-card {
+  position: absolute;
+  background: #dce8f5;
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  max-width: 220px;
+  font-size: 0.9rem;
+  color: #111;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+  animation: pop-in 0.15s ease-out;
+  cursor: grab;
+  user-select: none;
+}
+
+.annotation-card:active {
+  cursor: grabbing;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.annotation-card strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.annotation-close {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: #555;
+  line-height: 1;
+  padding: 0;
+}
+
+.annotation-close:hover {
+  color: #000;
+}
+
+/* Controls bar */
+.session-controls {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.75rem;
+  z-index: 3;
+}
+
+.session-controls button {
+  padding: 0.5rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.session-controls button:hover {
+  background: #0f3460;
+}
+
+/* Load text area */
+.load-text-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  z-index: 5;
+}
+
+.load-text-overlay textarea {
+  width: 50%;
+  min-height: 200px;
+  border-radius: 12px;
+  border: 2px solid #b0c4de;
+  padding: 1rem;
+  font-size: 1rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.load-text-overlay button {
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.load-text-overlay button:hover {
+  background: #0f3460;
+}
