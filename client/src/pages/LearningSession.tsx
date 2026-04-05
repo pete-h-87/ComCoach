@@ -204,7 +204,7 @@ export default function LearningSession() {
               y1={ann.wordY}
               x2={lineEndX}
               y2={bubbleCenterY}
-              stroke="#8a9bb5"
+              stroke="#000000"
               strokeWidth="1.5"
               strokeDasharray="5 3"
             />
