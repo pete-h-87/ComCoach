@@ -30,7 +30,12 @@
 }
 
 .reading-panel p {
-  margin: 0;
+  margin: 0 0 1rem;
+  white-space: pre-wrap;
+}
+
+.reading-panel p:last-child {
+  margin-bottom: 0;
 }
 
 /* SVG connector lines layer */
@@ -48,8 +53,7 @@
   position: absolute;
   background: #dce8f5;
   border-radius: 12px;
-  padding: 0.7rem 1rem;
-  max-width: 220px;
+  padding: 0.6rem 0.85rem 0.75rem;
   font-size: 0.9rem;
   color: #111;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -57,6 +61,7 @@
   animation: pop-in 0.15s ease-out;
   cursor: grab;
   user-select: none;
+  box-sizing: border-box;
 }
 
 .annotation-card:active {
@@ -75,26 +80,54 @@
   }
 }
 
-.annotation-card strong {
-  display: block;
-  margin-bottom: 0.25rem;
+.annotation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.annotation-word {
+  flex: 1;
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.annotation-body {
+  font-size: 0.88rem;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .annotation-close {
-  position: absolute;
-  top: 4px;
-  right: 8px;
   background: none;
   border: none;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   cursor: pointer;
   color: #555;
   line-height: 1;
-  padding: 0;
+  padding: 0 2px;
 }
 
 .annotation-close:hover {
   color: #000;
+}
+
+.annotation-lang-toggle {
+  background: #1a1a2e;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 7px;
+  cursor: pointer;
+  line-height: 1.2;
+  letter-spacing: 0.5px;
+}
+
+.annotation-lang-toggle:hover {
+  background: #0f3460;
 }
 
 /* Controls bar */
@@ -136,14 +169,20 @@
 }
 
 .load-text-overlay textarea {
-  width: 50%;
-  min-height: 200px;
-  border-radius: 12px;
+  width: 45%;
+  min-height: 300px;
+  background: #ffffff;
+  border-radius: 16px;
   border: 2px solid #b0c4de;
-  padding: 1rem;
-  font-size: 1rem;
-  resize: vertical;
+  padding: 2rem 2.5rem;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #222;
   font-family: inherit;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  resize: vertical;
+  white-space: pre-wrap;
+  box-sizing: border-box;
 }
 
 .load-text-overlay button {

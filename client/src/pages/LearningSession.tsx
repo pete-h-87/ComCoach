@@ -3,16 +3,64 @@ import "./LearningSession.css";
 
 interface Annotation {
   word: string;
-  definition: string;
+  definitionNo: string;
+  definitionEn: string;
+  showEnglish: boolean;
+  color: string;
   wordX: number;
   wordY: number;
   bubbleX: number;
   bubbleY: number;
 }
 
-const BUBBLE_HEIGHT_ESTIMATE = 70;
-const BUBBLE_WIDTH = 200;
+const BUBBLE_HEIGHT_ESTIMATE = 90;
+const BUBBLE_WIDTH = 260;
 const MARGIN_GAP = 28;
+
+const ANNOTATION_COLORS = [
+  "#e63946",
+  "#f77f00",
+  "#06a77d",
+  "#0077b6",
+  "#7209b7",
+  "#588157",
+  "#d62828",
+  "#2a9d8f",
+];
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function renderHighlightedParagraph(
+  text: string,
+  annotations: Annotation[]
+): React.ReactNode {
+  if (annotations.length === 0) return text;
+  const colorByWord = new Map<string, string>();
+  annotations.forEach((a) => colorByWord.set(a.word.toLowerCase(), a.color));
+  const words = [...colorByWord.keys()].map(escapeRegExp);
+  const pattern = new RegExp(`\\b(${words.join("|")})\\b`, "gi");
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    const color = colorByWord.get(match[0].toLowerCase());
+    parts.push(
+      <span
+        key={`${match.index}-${match[0]}`}
+        style={{ borderBottom: `2px solid ${color}`, paddingBottom: "1px" }}
+      >
+        {match[0]}
+      </span>
+    );
+    lastIndex = pattern.lastIndex;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
 
 export default function LearningSession() {
   const [text, setText] = useState("");
@@ -59,8 +107,8 @@ export default function LearningSession() {
   }, []);
 
   const handleDragStart = (e: React.MouseEvent, index: number) => {
-    // Don't start drag on the close button
-    if ((e.target as HTMLElement).closest(".annotation-close")) return;
+    // Don't start drag on the close button or language toggle
+    if ((e.target as HTMLElement).closest(".annotation-close, .annotation-lang-toggle")) return;
     e.preventDefault();
     const container = sessionRef.current;
     if (!container) return;
@@ -160,11 +208,27 @@ export default function LearningSession() {
       panelRightRel
     );
 
+    // Capture the surrounding paragraph as context for in-context definition.
+    let context = "";
+    let node: Node | null = range.startContainer;
+    while (node && node !== panel) {
+      if (node instanceof HTMLElement && node.tagName === "P") {
+        context = node.textContent ?? "";
+        break;
+      }
+      node = node.parentNode;
+    }
+
+    const lookupWord = word.toLowerCase();
+    const color = ANNOTATION_COLORS[annotations.length % ANNOTATION_COLORS.length];
     setAnnotations((prev) => [
       ...prev,
       {
-        word: word.toLowerCase(),
-        definition: "Looking up...",
+        word: lookupWord,
+        definitionNo: "Looking up...",
+        definitionEn: "Looking up...",
+        showEnglish: false,
+        color,
         wordX,
         wordY,
         bubbleX,
@@ -172,16 +236,22 @@ export default function LearningSession() {
       },
     ]);
 
-    setTimeout(() => {
+    fetchDefinitions(lookupWord, context).then(({ definitionNo, definitionEn }) => {
       setAnnotations((prev) =>
         prev.map((a) =>
-          a.word === word.toLowerCase() && a.definition === "Looking up..."
-            ? { ...a, definition: getPlaceholderDefinition(word.toLowerCase()) }
+          a.word === lookupWord && a.definitionNo === "Looking up..."
+            ? { ...a, definitionNo, definitionEn }
             : a
         )
       );
-    }, 400);
+    });
   }, [annotations]);
+
+  const toggleLanguage = (index: number) => {
+    setAnnotations((prev) =>
+      prev.map((a, i) => (i === index ? { ...a, showEnglish: !a.showEnglish } : a))
+    );
+  };
 
   const removeAnnotation = (index: number) => {
     setAnnotations((prev) => prev.filter((_, i) => i !== index));
@@ -191,12 +261,31 @@ export default function LearningSession() {
     <div className="learning-session" ref={sessionRef}>
       {/* SVG connector lines */}
       <svg className="connector-lines">
+        <defs>
+          {annotations.map((ann, i) => {
+            const bubbleCenterY = ann.bubbleY + 20;
+            const lineEndX =
+              ann.bubbleX < ann.wordX ? ann.bubbleX + BUBBLE_WIDTH : ann.bubbleX;
+            return (
+              <linearGradient
+                key={`grad-${i}`}
+                id={`line-grad-${i}`}
+                gradientUnits="userSpaceOnUse"
+                x1={lineEndX}
+                y1={bubbleCenterY}
+                x2={ann.wordX}
+                y2={ann.wordY}
+              >
+                <stop offset="0%" stopColor={ann.color} stopOpacity="1" />
+                <stop offset="100%" stopColor={ann.color} stopOpacity="0" />
+              </linearGradient>
+            );
+          })}
+        </defs>
         {annotations.map((ann, i) => {
           const bubbleCenterY = ann.bubbleY + 20;
           const lineEndX =
-            ann.bubbleX < ann.wordX
-              ? ann.bubbleX + BUBBLE_WIDTH
-              : ann.bubbleX;
+            ann.bubbleX < ann.wordX ? ann.bubbleX + BUBBLE_WIDTH : ann.bubbleX;
           return (
             <line
               key={i}
@@ -204,7 +293,7 @@ export default function LearningSession() {
               y1={ann.wordY}
               x2={lineEndX}
               y2={bubbleCenterY}
-              stroke="#000000"
+              stroke={`url(#line-grad-${i})`}
               strokeWidth="1.5"
               strokeDasharray="5 3"
             />
@@ -220,17 +309,41 @@ export default function LearningSession() {
           style={{ top: ann.bubbleY, left: ann.bubbleX, width: BUBBLE_WIDTH }}
           onMouseDown={(e) => handleDragStart(e, i)}
         >
-          <button className="annotation-close" onClick={() => removeAnnotation(i)}>
-            &times;
-          </button>
-          <strong>{ann.word}:</strong> {ann.definition}
+          <div className="annotation-header">
+            <strong className="annotation-word" style={{ color: ann.color }}>
+              {ann.word}
+            </strong>
+            <button
+              className="annotation-lang-toggle"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleLanguage(i);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              title={ann.showEnglish ? "Show Norwegian" : "Show English"}
+            >
+              {ann.showEnglish ? "EN" : "NO"}
+            </button>
+            <button
+              className="annotation-close"
+              onClick={() => removeAnnotation(i)}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              &times;
+            </button>
+          </div>
+          <div className="annotation-body">
+            {ann.showEnglish ? ann.definitionEn : ann.definitionNo}
+          </div>
         </div>
       ))}
 
       {/* Central reading panel */}
       <div className="reading-panel" ref={panelRef} onDoubleClick={handleDoubleClick}>
         <h3>Reading Text</h3>
-        <p>{loadedText}</p>
+        {loadedText.split(/\n\s*\n/).map((para, i) => (
+          <p key={i}>{renderHighlightedParagraph(para, annotations)}</p>
+        ))}
       </div>
 
       {/* Bottom controls */}
@@ -259,20 +372,23 @@ export default function LearningSession() {
   );
 }
 
-function getPlaceholderDefinition(word: string): string {
-  const definitions: Record<string, string> = {
-    communication: "the exchange of information or ideas",
-    essential: "absolutely necessary; extremely important",
-    area: "an expanse encompassing a place",
-    study: "the devotion of time and attention to gaining knowledge",
-    improve: "to make or become better",
-    skills: "the ability to do something well; expertise",
-    context: "the circumstances that form the setting for an event",
-    effectively: "in a way that produces the intended result",
-    vocabulary: "the body of words used in a particular language",
-    express: "to convey a thought or feeling in words",
-    ideas: "thoughts or suggestions as to a possible course of action",
-    confidently: "in a way that shows self-assurance",
-  };
-  return definitions[word] || `definition for "${word}"`;
+async function fetchDefinitions(
+  word: string,
+  context: string
+): Promise<{ definitionNo: string; definitionEn: string }> {
+  try {
+    const res = await fetch("/api/define", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word, context }),
+    });
+    if (!res.ok) return { definitionNo: "Lookup failed.", definitionEn: "—" };
+    const data = await res.json();
+    return {
+      definitionNo: data.definitionNo || "No definition.",
+      definitionEn: data.definitionEn || "—",
+    };
+  } catch {
+    return { definitionNo: "Lookup failed (network).", definitionEn: "—" };
+  }
 }
