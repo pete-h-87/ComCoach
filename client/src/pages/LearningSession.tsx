@@ -3,8 +3,10 @@ import "./LearningSession.css";
 
 interface Annotation {
   word: string;
+  context: string;
   definitionNo: string;
   definitionEn: string;
+  status: "loading" | "ready" | "failed";
   showEnglish: boolean;
   color: string;
   wordX: number;
@@ -64,9 +66,9 @@ function renderHighlightedParagraph(
 
 export default function LearningSession() {
   const [text, setText] = useState("");
-  const [loadedText, setLoadedText] = useState(
-    `Communication is an essential area of study for anyone looking to improve their skills. Understanding the context in which words are used helps you communicate more effectively. Building your vocabulary is one of the best ways to express ideas clearly and confidently.`
-  );
+  const [loadedText, setLoadedText] = useState("");
+  const [sessionTheme, setSessionTheme] = useState("");
+  const [themeStatus, setThemeStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
   const [showLoader, setShowLoader] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const sessionRef = useRef<HTMLDivElement>(null);
@@ -121,14 +123,65 @@ export default function LearningSession() {
     };
   };
 
+  const fetchTheme = useCallback(async (textToTheme: string) => {
+    setThemeStatus("loading");
+    setSessionTheme("");
+    try {
+      const res = await fetch("/api/theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: textToTheme }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const theme = (data.theme || "").trim();
+        if (theme) {
+          setSessionTheme(theme);
+          setThemeStatus("ready");
+        } else {
+          setThemeStatus("failed");
+        }
+      } else {
+        setThemeStatus("failed");
+      }
+    } catch {
+      setThemeStatus("failed");
+    }
+  }, []);
+
+  const loadNewText = useCallback(
+    async (incoming: string) => {
+      const trimmed = incoming.trim();
+      if (!trimmed) return;
+      setLoadedText(trimmed);
+      setAnnotations([]);
+      fetchTheme(trimmed);
+    },
+    [fetchTheme]
+  );
+
+  const retryTheme = useCallback(() => {
+    if (loadedText.trim()) fetchTheme(loadedText);
+  }, [loadedText, fetchTheme]);
+
   const handleLoad = useCallback(() => {
     if (text.trim()) {
-      setLoadedText(text.trim());
-      setAnnotations([]);
+      loadNewText(text);
       setShowLoader(false);
       setText("");
     }
-  }, [text]);
+  }, [text, loadNewText]);
+
+  const handlePasteFromClipboard = useCallback(async () => {
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip.trim()) {
+        loadNewText(clip);
+      }
+    } catch {
+      setShowLoader(true);
+    }
+  }, [loadNewText]);
 
   const findNonOverlappingY = (
     desiredY: number,
@@ -225,8 +278,10 @@ export default function LearningSession() {
       ...prev,
       {
         word: lookupWord,
+        context,
         definitionNo: "Looking up...",
         definitionEn: "Looking up...",
+        status: "loading",
         showEnglish: false,
         color,
         wordX,
@@ -236,16 +291,50 @@ export default function LearningSession() {
       },
     ]);
 
-    fetchDefinitions(lookupWord, context).then(({ definitionNo, definitionEn }) => {
+    fetchDefinitions(lookupWord, context).then((result) => {
       setAnnotations((prev) =>
         prev.map((a) =>
-          a.word === lookupWord && a.definitionNo === "Looking up..."
-            ? { ...a, definitionNo, definitionEn }
+          a.word === lookupWord && a.status === "loading"
+            ? {
+                ...a,
+                definitionNo: result.definitionNo,
+                definitionEn: result.definitionEn,
+                status: result.ok ? "ready" : "failed",
+              }
             : a
         )
       );
     });
   }, [annotations]);
+
+  const retryAnnotation = useCallback((index: number) => {
+    setAnnotations((prev) =>
+      prev.map((a, i) =>
+        i === index
+          ? { ...a, status: "loading", definitionNo: "Looking up...", definitionEn: "Looking up..." }
+          : a
+      )
+    );
+    setAnnotations((prev) => {
+      const target = prev[index];
+      if (!target) return prev;
+      fetchDefinitions(target.word, target.context).then((result) => {
+        setAnnotations((curr) =>
+          curr.map((a, i) =>
+            i === index
+              ? {
+                  ...a,
+                  definitionNo: result.definitionNo,
+                  definitionEn: result.definitionEn,
+                  status: result.ok ? "ready" : "failed",
+                }
+              : a
+          )
+        );
+      });
+      return prev;
+    });
+  }, []);
 
   const toggleLanguage = (index: number) => {
     setAnnotations((prev) =>
@@ -256,6 +345,32 @@ export default function LearningSession() {
   const removeAnnotation = (index: number) => {
     setAnnotations((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  const handleSave = useCallback(async () => {
+    if (!loadedText.trim()) return;
+    setSaveStatus("saving");
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: loadedText,
+          sessionTheme,
+          words: annotations.map((a) => ({
+            word: a.word,
+            definitionNo: a.definitionNo,
+            definitionEn: a.definitionEn,
+          })),
+        }),
+      });
+      setSaveStatus(res.ok ? "saved" : "error");
+    } catch {
+      setSaveStatus("error");
+    }
+    setTimeout(() => setSaveStatus("idle"), 1800);
+  }, [loadedText, sessionTheme, annotations]);
 
   return (
     <div className="learning-session" ref={sessionRef}>
@@ -334,21 +449,74 @@ export default function LearningSession() {
           </div>
           <div className="annotation-body">
             {ann.showEnglish ? ann.definitionEn : ann.definitionNo}
+            {ann.status === "failed" && (
+              <button
+                type="button"
+                className="annotation-retry"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  retryAnnotation(i);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                title="Retry lookup"
+              >
+                ↻ Retry
+              </button>
+            )}
           </div>
         </div>
       ))}
 
       {/* Central reading panel */}
-      <div className="reading-panel" ref={panelRef} onDoubleClick={handleDoubleClick}>
-        <h3>Reading Text</h3>
-        {loadedText.split(/\n\s*\n/).map((para, i) => (
-          <p key={i}>{renderHighlightedParagraph(para, annotations)}</p>
-        ))}
+      <div
+        className={`reading-panel${loadedText ? "" : " reading-panel--empty"}`}
+        ref={panelRef}
+        onDoubleClick={handleDoubleClick}
+      >
+        {loadedText ? (
+          <>
+            {themeStatus === "loading" && (
+              <div className="session-theme session-theme--loading">…</div>
+            )}
+            {themeStatus === "ready" && sessionTheme && (
+              <div className="session-theme">{sessionTheme}</div>
+            )}
+            {themeStatus === "failed" && (
+              <div className="session-theme session-theme--failed">
+                <span>Failed</span>
+                <button
+                  type="button"
+                  className="session-theme-retry"
+                  onClick={retryTheme}
+                  title="Retry topic"
+                >
+                  ↻ Retry
+                </button>
+              </div>
+            )}
+            {loadedText.split(/\n\s*\n/).map((para, i) => (
+              <p key={i}>{renderHighlightedParagraph(para, annotations)}</p>
+            ))}
+          </>
+        ) : (
+          <button className="paste-button" onClick={handlePasteFromClipboard}>
+            Paste
+          </button>
+        )}
       </div>
 
       {/* Bottom controls */}
       <div className="session-controls">
         <button onClick={() => setShowLoader(true)}>Load Text</button>
+        <button onClick={handleSave} disabled={!loadedText.trim() || saveStatus === "saving"}>
+          {saveStatus === "saving"
+            ? "Saving..."
+            : saveStatus === "saved"
+            ? "Saved!"
+            : saveStatus === "error"
+            ? "Error"
+            : "Save"}
+        </button>
         {annotations.length > 0 && (
           <button onClick={() => setAnnotations([])}>Clear All</button>
         )}
@@ -375,20 +543,21 @@ export default function LearningSession() {
 async function fetchDefinitions(
   word: string,
   context: string
-): Promise<{ definitionNo: string; definitionEn: string }> {
+): Promise<{ ok: boolean; definitionNo: string; definitionEn: string }> {
   try {
     const res = await fetch("/api/define", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ word, context }),
     });
-    if (!res.ok) return { definitionNo: "Lookup failed.", definitionEn: "—" };
+    if (!res.ok) return { ok: false, definitionNo: "Lookup failed.", definitionEn: "—" };
     const data = await res.json();
     return {
+      ok: true,
       definitionNo: data.definitionNo || "No definition.",
       definitionEn: data.definitionEn || "—",
     };
   } catch {
-    return { definitionNo: "Lookup failed (network).", definitionEn: "—" };
+    return { ok: false, definitionNo: "Lookup failed (network).", definitionEn: "—" };
   }
 }

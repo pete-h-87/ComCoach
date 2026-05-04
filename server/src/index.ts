@@ -5,13 +5,72 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
+import { pool } from "./db";
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_FALLBACK_MODEL = "gemini-2.0-flash";
 
 app.use(cors());
 app.use(express.json());
+
+// Calls Gemini with retry + model fallback when the primary model is overloaded.
+// Retries on 429/503 with exponential backoff, then falls back to a lighter model.
+async function callGeminiWithRetry(
+  body: unknown,
+  maxAttempts = 3
+): Promise<{ ok: true; text: string } | { ok: false; status: number; error: string }> {
+  const models = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
+
+  for (const model of models) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      try {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (r.ok) {
+          const data: any = await r.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (typeof text !== "string") {
+            return { ok: false, status: 502, error: "unexpected gemini response" };
+          }
+          if (model !== GEMINI_MODEL) {
+            console.log(`[gemini] succeeded via fallback model "${model}"`);
+          }
+          return { ok: true, text };
+        }
+
+        // Retry only on rate-limit / overload codes; otherwise bail out.
+        const transient = r.status === 429 || r.status === 503;
+        const errText = await r.text();
+        console.error(`Gemini error (${model}, attempt ${attempt}):`, r.status, errText);
+
+        if (!transient) {
+          return { ok: false, status: 502, error: "gemini request failed" };
+        }
+
+        if (attempt < maxAttempts) {
+          const backoffMs = 400 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 200);
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        }
+      } catch (e) {
+        console.error(`Gemini fetch threw (${model}, attempt ${attempt}):`, e);
+        if (attempt < maxAttempts) {
+          const backoffMs = 400 * Math.pow(2, attempt - 1);
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        }
+      }
+    }
+    console.warn(`[gemini] model "${model}" exhausted retries; trying next model`);
+  }
+  return { ok: false, status: 503, error: "gemini unavailable" };
+}
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", geminiConfigured: !!GEMINI_API_KEY });
@@ -39,40 +98,27 @@ app.post("/api/define", async (req, res) => {
   ].join("\n");
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              definitionNo: { type: "STRING" },
-              definitionEn: { type: "STRING" },
-            },
-            required: ["definitionNo", "definitionEn"],
+    const result = await callGeminiWithRetry({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            definitionNo: { type: "STRING" },
+            definitionEn: { type: "STRING" },
           },
-          temperature: 0.2,
+          required: ["definitionNo", "definitionEn"],
         },
-      }),
+        temperature: 0.2,
+      },
     });
 
-    if (!r.ok) {
-      const errText = await r.text();
-      console.error("Gemini error:", r.status, errText);
-      return res.status(502).json({ error: "gemini request failed" });
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
     }
 
-    const data: any = await r.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof text !== "string") {
-      return res.status(502).json({ error: "unexpected gemini response" });
-    }
-
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(result.text);
     const definitionNo = String(parsed.definitionNo ?? "").trim();
     const definitionEn = String(parsed.definitionEn ?? "").trim().split(/\s+/)[0] ?? "";
 
@@ -80,6 +126,169 @@ app.post("/api/define", async (req, res) => {
   } catch (e) {
     console.error("Define route error:", e);
     return res.status(500).json({ error: "lookup failed" });
+  }
+});
+
+// Generates a very short topic descriptor for a chunk of text using Gemini.
+// Body: { text: string }
+// Returns: { theme: string }
+app.post("/api/theme", async (req, res) => {
+  const { text } = req.body ?? {};
+  if (typeof text !== "string" || !text.trim()) {
+    return res.status(400).json({ error: "text required" });
+  }
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+  }
+
+  const prompt = [
+    `Read the following text and produce a very short topic descriptor (2-5 words) summarizing what it is about.`,
+    `The theme MUST be written in Norwegian (Bokmål), regardless of the language of the source text.`,
+    `Return JSON with one field "theme". No punctuation at the end. Title Case.`,
+    ``,
+    `Text:`,
+    `"""`,
+    text,
+    `"""`,
+  ].join("\n");
+
+  try {
+    const result = await callGeminiWithRetry({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: { theme: { type: "STRING" } },
+          required: ["theme"],
+        },
+        temperature: 0.3,
+      },
+    });
+
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
+    }
+
+    const parsed = JSON.parse(result.text);
+    const theme = String(parsed.theme ?? "").trim();
+    return res.json({ theme });
+  } catch (e) {
+    console.error("Theme route error:", e);
+    return res.status(500).json({ error: "theme lookup failed" });
+  }
+});
+
+// Saves a learning session (text + theme + double-clicked words with their definitions).
+// Body: { text: string, sessionTheme: string, words: Array<{ word, definitionNo, definitionEn }> }
+app.post("/api/sessions", async (req, res) => {
+  const { text, sessionTheme, words } = req.body ?? {};
+  if (typeof text !== "string" || !text.trim()) {
+    return res.status(400).json({ error: "text required" });
+  }
+  if (!Array.isArray(words)) {
+    return res.status(400).json({ error: "words must be an array" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const sessionResult = await client.query<{ id: number }>(
+      `INSERT INTO sessions (session_theme, text) VALUES ($1, $2) RETURNING id`,
+      [sessionTheme || null, text]
+    );
+    const sessionId = sessionResult.rows[0].id;
+
+    if (words.length > 0) {
+      const values: unknown[] = [];
+      const placeholders: string[] = [];
+      words.forEach((w: any, i: number) => {
+        const base = i * 4;
+        placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`);
+        values.push(sessionId, w.word, w.definitionNo, w.definitionEn);
+      });
+      await client.query(
+        `INSERT INTO session_words (session_id, word, definition_no, definition_en)
+         VALUES ${placeholders.join(", ")}`,
+        values
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.json({ ok: true, sessionId });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("Save session error:", e);
+    return res.status(500).json({ error: "save failed" });
+  } finally {
+    client.release();
+  }
+});
+
+// Lists all saved sessions, newest first.
+app.get("/api/sessions", async (_req, res) => {
+  try {
+    const result = await pool.query<{
+      id: number;
+      session_theme: string | null;
+      text: string;
+      created_at: string;
+    }>(
+      `SELECT id, session_theme, text, created_at
+       FROM sessions
+       ORDER BY created_at DESC`
+    );
+    return res.json({
+      sessions: result.rows.map((r) => ({
+        id: r.id,
+        sessionTheme: r.session_theme,
+        text: r.text,
+        createdAt: r.created_at,
+      })),
+    });
+  } catch (e) {
+    console.error("List sessions error:", e);
+    return res.status(500).json({ error: "list failed" });
+  }
+});
+
+// Fetches one session including its highlighted words.
+app.get("/api/sessions/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "invalid id" });
+
+  try {
+    const session = await pool.query(
+      `SELECT id, session_theme, text, created_at FROM sessions WHERE id = $1`,
+      [id]
+    );
+    if (session.rowCount === 0) return res.status(404).json({ error: "not found" });
+
+    const words = await pool.query(
+      `SELECT id, word, definition_no, definition_en
+       FROM session_words
+       WHERE session_id = $1
+       ORDER BY id ASC`,
+      [id]
+    );
+
+    const s = session.rows[0];
+    return res.json({
+      id: s.id,
+      sessionTheme: s.session_theme,
+      text: s.text,
+      createdAt: s.created_at,
+      words: words.rows.map((w) => ({
+        id: w.id,
+        word: w.word,
+        definitionNo: w.definition_no,
+        definitionEn: w.definition_en,
+      })),
+    });
+  } catch (e) {
+    console.error("Get session error:", e);
+    return res.status(500).json({ error: "fetch failed" });
   }
 });
 

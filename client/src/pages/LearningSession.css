@@ -24,9 +24,73 @@
   z-index: 1;
 }
 
-.reading-panel h3 {
-  margin: 0 0 1rem;
-  font-size: 1.3rem;
+.reading-panel--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.session-theme {
+  font-weight: 700;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: #1a1a2e;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.session-theme--loading {
+  color: #7a7a8a;
+  font-weight: 500;
+}
+
+.session-theme--failed {
+  color: #c0392b;
+}
+
+.session-theme-retry {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: #fff;
+  color: #2a6fdb;
+  border: 1px solid #2a6fdb;
+  border-radius: 999px;
+  padding: 2px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.session-theme-retry:hover {
+  background: #2a6fdb;
+  color: #fff;
+}
+
+.paste-button {
+  padding: 0.85rem 2.75rem;
+  border: none;
+  border-radius: 999px;
+  background: #2a6fdb;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.paste-button:hover {
+  background: #1e5bbf;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+.paste-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
 .reading-panel p {
@@ -97,6 +161,28 @@
   font-size: 0.88rem;
   line-height: 1.4;
   word-break: break-word;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.annotation-retry {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: #fff;
+  color: #2a6fdb;
+  border: 1px solid #2a6fdb;
+  border-radius: 999px;
+  padding: 1px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.annotation-retry:hover {
+  background: #2a6fdb;
+  color: #fff;
 }
 
 .annotation-close {
