@@ -13,7 +13,7 @@
 .reading-panel {
   width: 45%;
   min-height: 300px;
-  background: #ffffff;
+  background: #e9eff7;
   border-radius: 16px;
   padding: 2rem 2.5rem;
   font-size: 1.1rem;
@@ -54,7 +54,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.3px;
-  background: #fff;
+  background: #e9eff7;
   color: #2a6fdb;
   border: 1px solid #2a6fdb;
   border-radius: 999px;
@@ -171,7 +171,7 @@
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.3px;
-  background: #fff;
+  background: #e9eff7;
   color: #2a6fdb;
   border: 1px solid #2a6fdb;
   border-radius: 999px;
@@ -257,7 +257,7 @@
 .load-text-overlay textarea {
   width: 45%;
   min-height: 300px;
-  background: #ffffff;
+  background: #e9eff7;
   border-radius: 16px;
   border: 2px solid #b0c4de;
   padding: 2rem 2.5rem;

@@ -36,7 +36,7 @@
 }
 
 .session-item {
-  background: #ffffff;
+  background: #e9eff7;
   border-radius: 14px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -64,7 +64,7 @@
 }
 
 .session-header:hover {
-  background: #f3f6fb;
+  background: #dbe4ee;
 }
 
 .session-theme-label {
@@ -141,7 +141,7 @@
 
 /* Word panel */
 .session-words {
-  background: #f3f6fb;
+  background: #d6e0eb;
   border-radius: 12px;
   padding: 1rem 1.1rem;
   align-self: start;
@@ -170,7 +170,7 @@
   grid-template-columns: 1fr;
   gap: 0.15rem;
   padding: 0.55rem 0.7rem;
-  background: #ffffff;
+  background: #e9eff7;
   border-radius: 8px;
   border-left: 3px solid #2a6fdb;
 }

@@ -1,0 +1,112 @@
+.word-list-page {
+  padding: 2rem;
+  min-height: calc(100vh - 4rem);
+}
+
+.word-list-page h2 {
+  margin: 0 0 0.5rem;
+}
+
+.word-list-subtitle {
+  color: #555;
+  margin: 0 0 1.5rem;
+}
+
+.word-list-empty {
+  color: #666;
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+.word-list-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 800px) {
+  .word-list-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.word-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  background: #e9eff7;
+  border: 1px solid #e1e1e1;
+  border-bottom-width: 3px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: #222;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+  text-align: center;
+  word-break: break-word;
+}
+
+.word-chip:hover {
+  background: #dbe4ee;
+}
+
+.word-chip:active {
+  transform: translateY(1px);
+}
+
+.word-chip-remove {
+  color: #888;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.word-chip-remove:hover {
+  color: #000;
+}
+
+/* Modal popup overlay */
+.word-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: word-popup-fade 0.12s ease-out;
+}
+
+@keyframes word-popup-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Override .annotation-card absolute positioning + grab cursor for modal usage */
+.word-popup-card.annotation-card {
+  position: relative;
+  top: auto;
+  left: auto;
+  cursor: default;
+  width: 320px;
+  max-width: 90vw;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.word-popup-card.annotation-card:active {
+  cursor: default;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.word-popup-context {
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: #555;
+  font-style: italic;
+  line-height: 1.4;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 0.5rem;
+}
