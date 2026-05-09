@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useLang } from "../lib/lang";
+import logoUrl from "../assets/logo-brain-bubble.svg";
 import "./Layout.css";
 
 const LABELS = {
@@ -36,6 +37,7 @@ export default function Layout() {
         <div className="sidebar-header">
           <Link to="/" className="logo-link" onClick={closeMenu}>
             <h1 className="logo">ComCoach</h1>
+            <img src={logoUrl} alt="" className="logo-mark" aria-hidden="true" />
           </Link>
           <button
             className="menu-toggle"

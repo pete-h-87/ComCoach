@@ -32,12 +32,21 @@
   text-decoration: none;
   color: inherit;
   cursor: pointer;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   transition: opacity 0.15s;
 }
 
 .logo-link:hover {
-  opacity: 0.8;
+  opacity: 0.85;
+}
+
+.logo-mark {
+  width: 62px;
+  height: 62px;
+  display: block;
+  flex-shrink: 0;
 }
 
 .sidebar-footer {
@@ -69,7 +78,9 @@
   font-weight: 700;
   letter-spacing: 0.6px;
   border-radius: 999px;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   font-family: inherit;
   line-height: 1;
 }
@@ -110,12 +121,14 @@
 }
 
 .sidebar a {
-  display: block;
+  display: flex;
   padding: 0.6rem 0.8rem;
   border-radius: 6px;
   color: #ccc;
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .sidebar a:hover {
@@ -163,7 +176,9 @@
   .sidebar ul {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.25s ease, margin-top 0.25s ease;
+    transition:
+      max-height 0.25s ease,
+      margin-top 0.25s ease;
   }
 
   .sidebar.sidebar--open ul {
@@ -177,7 +192,10 @@
     padding-top: 0;
     border-top: none;
     overflow: hidden;
-    transition: max-height 0.25s ease, padding-top 0.25s ease, margin-top 0.25s ease;
+    transition:
+      max-height 0.25s ease,
+      padding-top 0.25s ease,
+      margin-top 0.25s ease;
   }
 
   .sidebar.sidebar--open .sidebar-footer {
