@@ -1,5 +1,53 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useLang } from "../lib/lang";
 import "./LearningSession.css";
+
+const TEXT = {
+  en: {
+    looking: "Looking up...",
+    showNorwegian: "Show Norwegian",
+    showEnglish: "Show English",
+    retryLookup: "Retry lookup",
+    retryTopic: "Retry topic",
+    retry: "↻ Retry",
+    failed: "Failed",
+    saving: "Saving...",
+    saved: "Saved!",
+    errorBtn: "Error",
+    save: "Save",
+    loadText: "Load Text",
+    clearAll: "Clear All",
+    paste: "Paste",
+    placeholder: "Paste or type your text here...",
+    load: "Load",
+    cancel: "Cancel",
+    lookupFailed: "Lookup failed.",
+    noDefinition: "No definition.",
+    networkLookup: "Lookup failed (network).",
+  },
+  no: {
+    looking: "Slår opp...",
+    showNorwegian: "Vis norsk",
+    showEnglish: "Vis engelsk",
+    retryLookup: "Prøv oppslag igjen",
+    retryTopic: "Prøv tema igjen",
+    retry: "↻ Prøv igjen",
+    failed: "Mislyktes",
+    saving: "Lagrer...",
+    saved: "Lagret!",
+    errorBtn: "Feil",
+    save: "Lagre",
+    loadText: "Last inn tekst",
+    clearAll: "Fjern alle",
+    paste: "Lim inn",
+    placeholder: "Lim inn eller skriv teksten din her...",
+    load: "Last inn",
+    cancel: "Avbryt",
+    lookupFailed: "Oppslag mislyktes.",
+    noDefinition: "Ingen definisjon.",
+    networkLookup: "Oppslag mislyktes (nettverk).",
+  },
+};
 
 interface Annotation {
   word: string;
@@ -65,6 +113,8 @@ function renderHighlightedParagraph(
 }
 
 export default function LearningSession() {
+  const { lang } = useLang();
+  const t = TEXT[lang];
   const [text, setText] = useState("");
   const [loadedText, setLoadedText] = useState("");
   const [sessionTheme, setSessionTheme] = useState("");
@@ -311,7 +361,7 @@ export default function LearningSession() {
     setAnnotations((prev) =>
       prev.map((a, i) =>
         i === index
-          ? { ...a, status: "loading", definitionNo: "Looking up...", definitionEn: "Looking up..." }
+          ? { ...a, status: "loading", definitionNo: t.looking, definitionEn: t.looking }
           : a
       )
     );
@@ -334,7 +384,7 @@ export default function LearningSession() {
       });
       return prev;
     });
-  }, []);
+  }, [t.looking]);
 
   const toggleLanguage = (index: number) => {
     setAnnotations((prev) =>
@@ -435,7 +485,7 @@ export default function LearningSession() {
                 toggleLanguage(i);
               }}
               onMouseDown={(e) => e.stopPropagation()}
-              title={ann.showEnglish ? "Show Norwegian" : "Show English"}
+              title={ann.showEnglish ? t.showNorwegian : t.showEnglish}
             >
               {ann.showEnglish ? "EN" : "NO"}
             </button>
@@ -458,9 +508,9 @@ export default function LearningSession() {
                   retryAnnotation(i);
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
-                title="Retry lookup"
+                title={t.retryLookup}
               >
-                ↻ Retry
+                {t.retry}
               </button>
             )}
           </div>
@@ -483,14 +533,14 @@ export default function LearningSession() {
             )}
             {themeStatus === "failed" && (
               <div className="session-theme session-theme--failed">
-                <span>Failed</span>
+                <span>{t.failed}</span>
                 <button
                   type="button"
                   className="session-theme-retry"
                   onClick={retryTheme}
-                  title="Retry topic"
+                  title={t.retryTopic}
                 >
-                  ↻ Retry
+                  {t.retry}
                 </button>
               </div>
             )}
@@ -500,25 +550,25 @@ export default function LearningSession() {
           </>
         ) : (
           <button className="paste-button" onClick={handlePasteFromClipboard}>
-            Paste
+            {t.paste}
           </button>
         )}
       </div>
 
       {/* Bottom controls */}
       <div className="session-controls">
-        <button onClick={() => setShowLoader(true)}>Load Text</button>
+        <button onClick={() => setShowLoader(true)}>{t.loadText}</button>
         <button onClick={handleSave} disabled={!loadedText.trim() || saveStatus === "saving"}>
           {saveStatus === "saving"
-            ? "Saving..."
+            ? t.saving
             : saveStatus === "saved"
-            ? "Saved!"
+            ? t.saved
             : saveStatus === "error"
-            ? "Error"
-            : "Save"}
+            ? t.errorBtn
+            : t.save}
         </button>
         {annotations.length > 0 && (
-          <button onClick={() => setAnnotations([])}>Clear All</button>
+          <button onClick={() => setAnnotations([])}>{t.clearAll}</button>
         )}
       </div>
 
@@ -528,11 +578,11 @@ export default function LearningSession() {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Paste or type your text here..."
+            placeholder={t.placeholder}
           />
           <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button onClick={handleLoad}>Load</button>
-            <button onClick={() => setShowLoader(false)}>Cancel</button>
+            <button onClick={handleLoad}>{t.load}</button>
+            <button onClick={() => setShowLoader(false)}>{t.cancel}</button>
           </div>
         </div>
       )}

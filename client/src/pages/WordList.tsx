@@ -1,6 +1,30 @@
 import { useEffect, useState } from "react";
+import { useLang } from "../lib/lang";
 import "./LearningSession.css";
 import "./WordList.css";
+
+const TEXT = {
+  en: {
+    title: "My Word List",
+    subtitle: "Words you double-clicked across all your saved Learning Sessions.",
+    loading: "Loading…",
+    failed: "Failed to load. Is the server running?",
+    empty: "No words saved yet. Save a Learning Session with highlighted words to start your list.",
+    showNorwegian: "Show Norwegian",
+    showEnglish: "Show English",
+    fromSession: "From session:",
+  },
+  no: {
+    title: "Min ordliste",
+    subtitle: "Ord du har dobbeltklikket på i alle dine lagrede læringsøkter.",
+    loading: "Laster…",
+    failed: "Kunne ikke laste. Kjører serveren?",
+    empty: "Ingen ord lagret ennå. Lagre en læringsøkt med markerte ord for å starte listen din.",
+    showNorwegian: "Vis norsk",
+    showEnglish: "Vis engelsk",
+    fromSession: "Fra økt:",
+  },
+};
 
 interface SavedWord {
   id: number;
@@ -32,6 +56,8 @@ function colorForWord(word: string): string {
 }
 
 export default function WordList() {
+  const { lang } = useLang();
+  const t = TEXT[lang];
   const [words, setWords] = useState<SavedWord[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [activeWord, setActiveWord] = useState<SavedWord | null>(null);
@@ -54,19 +80,15 @@ export default function WordList() {
 
   return (
     <div className="word-list-page">
-      <h2>My Word List</h2>
-      <p className="word-list-subtitle">
-        Words you double-clicked across all your saved Learning Sessions.
-      </p>
+      <h2>{t.title}</h2>
+      <p className="word-list-subtitle">{t.subtitle}</p>
 
-      {status === "loading" && <p className="word-list-empty">Loading…</p>}
+      {status === "loading" && <p className="word-list-empty">{t.loading}</p>}
       {status === "failed" && (
-        <p className="word-list-empty">Failed to load. Is the server running?</p>
+        <p className="word-list-empty">{t.failed}</p>
       )}
       {status === "ready" && words.length === 0 && (
-        <p className="word-list-empty">
-          No words saved yet. Save a Learning Session with highlighted words to start your list.
-        </p>
+        <p className="word-list-empty">{t.empty}</p>
       )}
 
       {status === "ready" && words.length > 0 && (
@@ -100,7 +122,7 @@ export default function WordList() {
               <button
                 className="annotation-lang-toggle"
                 onClick={() => setShowEnglish((v) => !v)}
-                title={showEnglish ? "Show Norwegian" : "Show English"}
+                title={showEnglish ? t.showNorwegian : t.showEnglish}
               >
                 {showEnglish ? "EN" : "NO"}
               </button>
@@ -116,7 +138,7 @@ export default function WordList() {
             </div>
             {activeWord.sessionTheme && (
               <div className="word-popup-context">
-                From session: {activeWord.sessionTheme}
+                {t.fromSession} {activeWord.sessionTheme}
               </div>
             )}
           </div>

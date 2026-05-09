@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLang } from "../lib/lang";
 import "./Quiz.css";
 
 type QuizType = "recent" | "random" | "theme";
@@ -19,18 +20,94 @@ interface GradedWord extends QuizWord {
   feedback: string;
 }
 
-const QUIZ_TYPE_LABELS: Record<QuizType, { title: string; desc: string }> = {
-  recent: { title: "Recent Words", desc: "10 words from your latest sessions" },
-  random: { title: "Random Words", desc: "10 words from anywhere in your list" },
-  theme: { title: "By Subject", desc: "10 words from a session theme" },
-};
-
-const DIFFICULTY_LABELS: Record<Difficulty, { title: string; desc: string }> = {
-  beginner: { title: "Beginner", desc: "Define in English" },
-  expert: { title: "Expert", desc: "Define in Norwegian" },
+const TEXT = {
+  en: {
+    title: "Quiz",
+    completeTitle: "Quiz Complete",
+    quizType: "Quiz Type",
+    subject: "Subject",
+    difficulty: "Difficulty",
+    startQuiz: "Start Quiz",
+    loading: "Loading…",
+    back: "Back",
+    noThemes: "No saved sessions with themes yet. Save a session first.",
+    typeRecentTitle: "Recent Words",
+    typeRecentDesc: "10 words from your latest sessions",
+    typeRandomTitle: "Random Words",
+    typeRandomDesc: "10 words from anywhere in your list",
+    typeThemeTitle: "By Subject",
+    typeThemeDesc: "10 words from a session theme",
+    diffBeginnerTitle: "Beginner",
+    diffBeginnerDesc: "Define in English",
+    diffExpertTitle: "Expert",
+    diffExpertDesc: "Define in Norwegian",
+    questionOf: (i: number, n: number) => `Question ${i} of ${n}`,
+    correctCount: (n: number) => `${n} correct`,
+    promptBeginner: "Define in English",
+    promptExpert: "Define in Norwegian",
+    typeAnswer: "Type your answer…",
+    submit: "Submit",
+    checking: "Checking…",
+    next: "Next",
+    finish: "Finish",
+    correct: "✓ Correct",
+    missed: "✗ Missed",
+    expected: "Expected:",
+    noAnswerRecorded: "(no answer recorded)",
+    tryAgain: "Try Again",
+    newQuiz: "New Quiz",
+    failedLoad: "Failed to load quiz.",
+    noWords: "No words available for this quiz. Save a session first.",
+    networkError: "Network error.",
+    gradingUnavailable: "Grading unavailable — counted as missed.",
+    networkMissed: "Network error — counted as missed.",
+  },
+  no: {
+    title: "Quiz",
+    completeTitle: "Quiz fullført",
+    quizType: "Quiz-type",
+    subject: "Tema",
+    difficulty: "Vanskelighetsgrad",
+    startQuiz: "Start quiz",
+    loading: "Laster…",
+    back: "Tilbake",
+    noThemes: "Ingen lagrede økter med temaer ennå. Lagre en økt først.",
+    typeRecentTitle: "Siste ord",
+    typeRecentDesc: "10 ord fra dine siste økter",
+    typeRandomTitle: "Tilfeldige ord",
+    typeRandomDesc: "10 ord fra hvor som helst i listen din",
+    typeThemeTitle: "Etter tema",
+    typeThemeDesc: "10 ord fra et økttema",
+    diffBeginnerTitle: "Nybegynner",
+    diffBeginnerDesc: "Definer på engelsk",
+    diffExpertTitle: "Ekspert",
+    diffExpertDesc: "Definer på norsk",
+    questionOf: (i: number, n: number) => `Spørsmål ${i} av ${n}`,
+    correctCount: (n: number) => `${n} riktige`,
+    promptBeginner: "Definer på engelsk",
+    promptExpert: "Definer på norsk",
+    typeAnswer: "Skriv svaret ditt…",
+    submit: "Send inn",
+    checking: "Sjekker…",
+    next: "Neste",
+    finish: "Fullfør",
+    correct: "✓ Riktig",
+    missed: "✗ Bommet",
+    expected: "Forventet:",
+    noAnswerRecorded: "(ingen svar registrert)",
+    tryAgain: "Prøv igjen",
+    newQuiz: "Ny quiz",
+    failedLoad: "Kunne ikke laste quiz.",
+    noWords: "Ingen ord tilgjengelig for denne quizen. Lagre en økt først.",
+    networkError: "Nettverksfeil.",
+    gradingUnavailable: "Vurdering utilgjengelig — regnet som bommet.",
+    networkMissed: "Nettverksfeil — regnet som bommet.",
+  },
 };
 
 export default function Quiz() {
+  const { lang } = useLang();
+  const t = TEXT[lang];
   const [phase, setPhase] = useState<Phase>("picker");
   const [type, setType] = useState<QuizType>("recent");
   const [difficulty, setDifficulty] = useState<Difficulty>("beginner");
@@ -65,14 +142,14 @@ export default function Quiz() {
     try {
       const res = await fetch(`/api/quiz?${params.toString()}`);
       if (!res.ok) {
-        setError("Failed to load quiz.");
+        setError(t.failedLoad);
         setPhase("error");
         return;
       }
       const data = await res.json();
       const fetched: QuizWord[] = data.words ?? [];
       if (fetched.length === 0) {
-        setError("No words available for this quiz. Save a session first.");
+        setError(t.noWords);
         setPhase("error");
         return;
       }
@@ -83,7 +160,7 @@ export default function Quiz() {
       setGraded([]);
       setPhase("active");
     } catch {
-      setError("Network error.");
+      setError(t.networkError);
       setPhase("error");
     }
   };
@@ -106,13 +183,13 @@ export default function Quiz() {
         }),
       });
       if (!res.ok) {
-        setResult({ correct: false, feedback: "Grading unavailable — counted as missed." });
+        setResult({ correct: false, feedback: t.gradingUnavailable });
       } else {
         const data = await res.json();
         setResult({ correct: !!data.correct, feedback: String(data.feedback ?? "") });
       }
     } catch {
-      setResult({ correct: false, feedback: "Network error — counted as missed." });
+      setResult({ correct: false, feedback: t.networkMissed });
     } finally {
       setChecking(false);
     }
@@ -121,11 +198,30 @@ export default function Quiz() {
   const next = () => {
     if (!result) return;
     const current = words[index];
-    setGraded((prev) => [
-      ...prev,
-      { ...current, correct: result.correct, userAnswer, feedback: result.feedback },
-    ]);
+    const newEntry: GradedWord = {
+      ...current,
+      correct: result.correct,
+      userAnswer,
+      feedback: result.feedback,
+    };
+    const finalGraded = [...graded, newEntry];
+    setGraded(finalGraded);
     if (index + 1 >= words.length) {
+      const correctCount = finalGraded.filter((g) => g.correct).length;
+      // Fire-and-forget — don't block the UI on the score record.
+      fetch("/api/quiz/attempts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quizType: type,
+          difficulty,
+          theme: type === "theme" ? theme : null,
+          total: finalGraded.length,
+          correct: correctCount,
+        }),
+      }).catch(() => {
+        // Silent — scores not being recorded shouldn't break the flow.
+      });
       setPhase("done");
     } else {
       setIndex((i) => i + 1);
@@ -151,24 +247,34 @@ export default function Quiz() {
     setPhase("active");
   };
 
+  const typeOptions: Array<{ key: QuizType; title: string; desc: string }> = [
+    { key: "recent", title: t.typeRecentTitle, desc: t.typeRecentDesc },
+    { key: "random", title: t.typeRandomTitle, desc: t.typeRandomDesc },
+    { key: "theme", title: t.typeThemeTitle, desc: t.typeThemeDesc },
+  ];
+  const diffOptions: Array<{ key: Difficulty; title: string; desc: string }> = [
+    { key: "beginner", title: t.diffBeginnerTitle, desc: t.diffBeginnerDesc },
+    { key: "expert", title: t.diffExpertTitle, desc: t.diffExpertDesc },
+  ];
+
   // ---------- Picker ----------
   if (phase === "picker") {
     const themeDisabled = type === "theme" && themes.length === 0;
     return (
       <div className="quiz-page">
-        <h2 className="quiz-title">Quiz</h2>
+        <h2 className="quiz-title">{t.title}</h2>
         <div className="quiz-picker">
           <div>
-            <p className="quiz-section-label">Quiz Type</p>
+            <p className="quiz-section-label">{t.quizType}</p>
             <div className="quiz-options">
-              {(Object.keys(QUIZ_TYPE_LABELS) as QuizType[]).map((t) => (
+              {typeOptions.map((opt) => (
                 <button
-                  key={t}
-                  className={`quiz-option ${type === t ? "quiz-option--selected" : ""}`}
-                  onClick={() => setType(t)}
+                  key={opt.key}
+                  className={`quiz-option ${type === opt.key ? "quiz-option--selected" : ""}`}
+                  onClick={() => setType(opt.key)}
                 >
-                  <span>{QUIZ_TYPE_LABELS[t].title}</span>
-                  <span className="quiz-option-desc">{QUIZ_TYPE_LABELS[t].desc}</span>
+                  <span>{opt.title}</span>
+                  <span className="quiz-option-desc">{opt.desc}</span>
                 </button>
               ))}
             </div>
@@ -176,19 +282,17 @@ export default function Quiz() {
 
           {type === "theme" && (
             <div>
-              <p className="quiz-section-label">Subject</p>
+              <p className="quiz-section-label">{t.subject}</p>
               {themes.length === 0 ? (
-                <p className="quiz-error">
-                  No saved sessions with themes yet. Save a session first.
-                </p>
+                <p className="quiz-error">{t.noThemes}</p>
               ) : (
                 <select
                   className="quiz-theme-select"
                   value={theme}
                   onChange={(e) => setTheme(e.target.value)}
                 >
-                  {themes.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                  {themes.map((th) => (
+                    <option key={th} value={th}>{th}</option>
                   ))}
                 </select>
               )}
@@ -196,16 +300,16 @@ export default function Quiz() {
           )}
 
           <div>
-            <p className="quiz-section-label">Difficulty</p>
+            <p className="quiz-section-label">{t.difficulty}</p>
             <div className="quiz-options quiz-options-2">
-              {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((d) => (
+              {diffOptions.map((opt) => (
                 <button
-                  key={d}
-                  className={`quiz-option ${difficulty === d ? "quiz-option--selected" : ""}`}
-                  onClick={() => setDifficulty(d)}
+                  key={opt.key}
+                  className={`quiz-option ${difficulty === opt.key ? "quiz-option--selected" : ""}`}
+                  onClick={() => setDifficulty(opt.key)}
                 >
-                  <span>{DIFFICULTY_LABELS[d].title}</span>
-                  <span className="quiz-option-desc">{DIFFICULTY_LABELS[d].desc}</span>
+                  <span>{opt.title}</span>
+                  <span className="quiz-option-desc">{opt.desc}</span>
                 </button>
               ))}
             </div>
@@ -216,7 +320,7 @@ export default function Quiz() {
             onClick={startQuiz}
             disabled={themeDisabled}
           >
-            Start Quiz
+            {t.startQuiz}
           </button>
         </div>
       </div>
@@ -227,8 +331,8 @@ export default function Quiz() {
   if (phase === "loading") {
     return (
       <div className="quiz-page">
-        <h2 className="quiz-title">Quiz</h2>
-        <p className="quiz-loading">Loading…</p>
+        <h2 className="quiz-title">{t.title}</h2>
+        <p className="quiz-loading">{t.loading}</p>
       </div>
     );
   }
@@ -236,9 +340,9 @@ export default function Quiz() {
   if (phase === "error") {
     return (
       <div className="quiz-page">
-        <h2 className="quiz-title">Quiz</h2>
+        <h2 className="quiz-title">{t.title}</h2>
         <p className="quiz-error">{error}</p>
-        <button className="quiz-start" onClick={resetToPicker}>Back</button>
+        <button className="quiz-start" onClick={resetToPicker}>{t.back}</button>
       </div>
     );
   }
@@ -250,15 +354,15 @@ export default function Quiz() {
     const expectedAnswer =
       difficulty === "beginner" ? current.definitionEn : current.definitionNo;
     const promptLabel =
-      difficulty === "beginner" ? "Define in English" : "Define in Norwegian";
+      difficulty === "beginner" ? t.promptBeginner : t.promptExpert;
 
     return (
       <div className="quiz-page">
-        <h2 className="quiz-title">Quiz</h2>
+        <h2 className="quiz-title">{t.title}</h2>
         <div className="quiz-active">
           <div className="quiz-progress">
-            <span>Question {index + 1} of {words.length}</span>
-            <span className="quiz-progress-score">{score} correct</span>
+            <span>{t.questionOf(index + 1, words.length)}</span>
+            <span className="quiz-progress-score">{t.correctCount(score)}</span>
           </div>
 
           <div className="quiz-card">
@@ -274,7 +378,7 @@ export default function Quiz() {
                 if (e.key === "Enter" && !result && !checking) submitAnswer();
                 if (e.key === "Enter" && result) next();
               }}
-              placeholder="Type your answer…"
+              placeholder={t.typeAnswer}
               disabled={!!result || checking}
               autoFocus
             />
@@ -286,12 +390,12 @@ export default function Quiz() {
                 }`}
               >
                 <div className="quiz-verdict-mark">
-                  {result.correct ? "✓ Correct" : "✗ Missed"}
+                  {result.correct ? t.correct : t.missed}
                 </div>
                 {result.feedback && <div className="quiz-verdict-feedback">{result.feedback}</div>}
                 <div className="quiz-verdict-expected">
-                  <span className="quiz-verdict-expected-label">Expected:</span>{" "}
-                  {expectedAnswer || "(no answer recorded)"}
+                  <span className="quiz-verdict-expected-label">{t.expected}</span>{" "}
+                  {expectedAnswer || t.noAnswerRecorded}
                 </div>
               </div>
             )}
@@ -303,14 +407,14 @@ export default function Quiz() {
                   onClick={submitAnswer}
                   disabled={checking || !userAnswer.trim()}
                 >
-                  {checking ? "Checking…" : "Submit"}
+                  {checking ? t.checking : t.submit}
                 </button>
               ) : (
                 <button
                   className="quiz-button quiz-button-reveal"
                   onClick={next}
                 >
-                  {index + 1 >= words.length ? "Finish" : "Next"}
+                  {index + 1 >= words.length ? t.finish : t.next}
                 </button>
               )}
             </div>
@@ -324,7 +428,7 @@ export default function Quiz() {
   const correctCount = graded.filter((g) => g.correct).length;
   return (
     <div className="quiz-page">
-      <h2 className="quiz-title">Quiz Complete</h2>
+      <h2 className="quiz-title">{t.completeTitle}</h2>
       <div className="quiz-done">
         <div className="quiz-score">
           {correctCount}
@@ -356,8 +460,8 @@ export default function Quiz() {
         </div>
 
         <div className="quiz-done-actions">
-          <button className="quiz-start" onClick={retrySame}>Try Again</button>
-          <button className="quiz-start" onClick={resetToPicker}>New Quiz</button>
+          <button className="quiz-start" onClick={retrySame}>{t.tryAgain}</button>
+          <button className="quiz-start" onClick={resetToPicker}>{t.newQuiz}</button>
         </div>
       </div>
     </div>

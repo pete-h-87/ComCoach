@@ -226,6 +226,144 @@ app.post("/api/sessions", async (req, res) => {
   }
 });
 
+// Generates a Norwegian writing prompt for a short essay, calibrated to a learner level.
+// Body: { level?: "A1" | "A2" | "B1" | "B2" }  (default B1)
+// Returns: { prompt: string, promptEn: string }
+app.post("/api/essay/prompt", async (req, res) => {
+  const level = String(req.body?.level ?? "B1");
+  if (!["A1", "A2", "B1", "B2"].includes(level)) {
+    return res.status(400).json({ error: "invalid level" });
+  }
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+  }
+
+  const promptText = [
+    `Generate a short writing prompt for a Norwegian (Bokmål) language learner at CEFR level ${level}.`,
+    `The prompt should ask the learner to write one paragraph (about 5-8 sentences) on a concrete, everyday topic.`,
+    `Pick a fresh topic — vary across personal life, opinions, descriptions, hypotheticals, daily routines, or culture.`,
+    ``,
+    `Return JSON:`,
+    `- "prompt": the writing prompt itself, in Norwegian (Bokmål). One or two sentences. End with a period or question mark.`,
+    `- "promptEn": the same prompt translated to English.`,
+  ].join("\n");
+
+  try {
+    const result = await callGeminiWithRetry({
+      contents: [{ parts: [{ text: promptText }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            prompt: { type: "STRING" },
+            promptEn: { type: "STRING" },
+          },
+          required: ["prompt", "promptEn"],
+        },
+        temperature: 0.9,
+      },
+    });
+
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
+
+    const parsed = JSON.parse(result.text);
+    return res.json({
+      prompt: String(parsed.prompt ?? "").trim(),
+      promptEn: String(parsed.promptEn ?? "").trim(),
+    });
+  } catch (e) {
+    console.error("Essay prompt error:", e);
+    return res.status(500).json({ error: "prompt failed" });
+  }
+});
+
+// Grades a Norwegian short essay with Gemini.
+// Body: { topic: string, essay: string }
+// Returns: { level, feedback, correctedText, notes: [{ issue, suggestion }] }
+app.post("/api/essay/grade", async (req, res) => {
+  const { topic, essay } = req.body ?? {};
+  if (typeof topic !== "string" || !topic.trim()) {
+    return res.status(400).json({ error: "topic required" });
+  }
+  if (typeof essay !== "string" || !essay.trim()) {
+    return res.status(400).json({ error: "essay required" });
+  }
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+  }
+
+  const promptText = [
+    `You are a Norwegian (Bokmål) language teacher grading a short essay by a learner.`,
+    ``,
+    `Topic given to the student:`,
+    `"""`,
+    topic,
+    `"""`,
+    ``,
+    `Student's essay:`,
+    `"""`,
+    essay,
+    `"""`,
+    ``,
+    `Return JSON with these fields:`,
+    `- "level": one of "A1", "A2", "B1", "B2" reflecting the CEFR level demonstrated. Judge based on vocabulary range, sentence complexity, grammatical accuracy, and how on-topic the response is. Be honest.`,
+    `- "feedback": 1-2 sentences of overall feedback in English. Plain, direct.`,
+    `- "correctedText": the essay rewritten in correct Norwegian (Bokmål). Preserve the student's meaning and voice; fix grammar, spelling, word choice, and unnatural phrasing. Do not expand the content.`,
+    `- "notes": an array of 2-5 short objects, each describing one specific issue. Each object has:`,
+    `    - "issue": a short phrase (in English) naming the error type or pattern (e.g. "verb conjugation", "word order", "missing article").`,
+    `    - "suggestion": a one-sentence tip in English on how to fix it, with the corrected Norwegian form quoted if helpful.`,
+  ].join("\n");
+
+  try {
+    const result = await callGeminiWithRetry({
+      contents: [{ parts: [{ text: promptText }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            level: { type: "STRING" },
+            feedback: { type: "STRING" },
+            correctedText: { type: "STRING" },
+            notes: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  issue: { type: "STRING" },
+                  suggestion: { type: "STRING" },
+                },
+                required: ["issue", "suggestion"],
+              },
+            },
+          },
+          required: ["level", "feedback", "correctedText", "notes"],
+        },
+        temperature: 0.2,
+      },
+    });
+
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
+
+    const parsed = JSON.parse(result.text);
+    const levelOut = ["A1", "A2", "B1", "B2"].includes(parsed.level) ? parsed.level : "A2";
+    return res.json({
+      level: levelOut,
+      feedback: String(parsed.feedback ?? "").trim(),
+      correctedText: String(parsed.correctedText ?? "").trim(),
+      notes: Array.isArray(parsed.notes)
+        ? parsed.notes
+            .filter((n: any) => n && typeof n.issue === "string" && typeof n.suggestion === "string")
+            .map((n: any) => ({ issue: n.issue.trim(), suggestion: n.suggestion.trim() }))
+        : [],
+    });
+  } catch (e) {
+    console.error("Essay grade error:", e);
+    return res.status(500).json({ error: "grade failed" });
+  }
+});
+
 // Grades a quiz answer with Gemini.
 // Body: { word, expectedAnswer, userAnswer, language: "en" | "no" }
 // Returns: { correct: boolean, feedback: string }
@@ -514,6 +652,118 @@ app.get("/api/sessions/:id", async (req, res) => {
   } catch (e) {
     console.error("Get session error:", e);
     return res.status(500).json({ error: "fetch failed" });
+  }
+});
+
+// ---------- Quiz attempt records ----------
+
+app.post("/api/quiz/attempts", async (req, res) => {
+  const { quizType, difficulty, theme, total, correct } = req.body ?? {};
+  if (!["recent", "random", "theme"].includes(String(quizType))) {
+    return res.status(400).json({ error: "invalid quizType" });
+  }
+  if (!["beginner", "expert"].includes(String(difficulty))) {
+    return res.status(400).json({ error: "invalid difficulty" });
+  }
+  if (!Number.isInteger(total) || !Number.isInteger(correct) || total < 0 || correct < 0 || correct > total) {
+    return res.status(400).json({ error: "invalid total/correct" });
+  }
+
+  try {
+    const result = await pool.query<{ id: number }>(
+      `INSERT INTO quiz_attempts (quiz_type, difficulty, theme, total, correct)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [quizType, difficulty, theme || null, total, correct]
+    );
+    return res.json({ ok: true, id: result.rows[0].id });
+  } catch (e) {
+    console.error("Save quiz attempt error:", e);
+    return res.status(500).json({ error: "save failed" });
+  }
+});
+
+app.get("/api/quiz/attempts", async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, quiz_type, difficulty, theme, total, correct, created_at
+       FROM quiz_attempts
+       ORDER BY created_at DESC, id DESC
+       LIMIT 100`
+    );
+    return res.json({
+      attempts: result.rows.map((r: any) => ({
+        id: r.id,
+        quizType: r.quiz_type,
+        difficulty: r.difficulty,
+        theme: r.theme,
+        total: r.total,
+        correct: r.correct,
+        createdAt: r.created_at,
+      })),
+    });
+  } catch (e) {
+    console.error("List quiz attempts error:", e);
+    return res.status(500).json({ error: "list failed" });
+  }
+});
+
+// ---------- Essay attempt records ----------
+
+app.post("/api/essay/attempts", async (req, res) => {
+  const { targetLevel, achievedLevel, topic, essayText, correctedText, feedback } = req.body ?? {};
+  const validLevels = ["A1", "A2", "B1", "B2"];
+  if (!validLevels.includes(String(targetLevel))) {
+    return res.status(400).json({ error: "invalid targetLevel" });
+  }
+  if (!validLevels.includes(String(achievedLevel))) {
+    return res.status(400).json({ error: "invalid achievedLevel" });
+  }
+  if (typeof topic !== "string" || !topic.trim()) {
+    return res.status(400).json({ error: "topic required" });
+  }
+  if (typeof essayText !== "string" || !essayText.trim()) {
+    return res.status(400).json({ error: "essayText required" });
+  }
+  if (typeof correctedText !== "string") {
+    return res.status(400).json({ error: "correctedText required" });
+  }
+
+  try {
+    const result = await pool.query<{ id: number }>(
+      `INSERT INTO essay_attempts
+         (target_level, achieved_level, topic, essay_text, corrected_text, feedback)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [targetLevel, achievedLevel, topic, essayText, correctedText, feedback || null]
+    );
+    return res.json({ ok: true, id: result.rows[0].id });
+  } catch (e) {
+    console.error("Save essay attempt error:", e);
+    return res.status(500).json({ error: "save failed" });
+  }
+});
+
+app.get("/api/essay/attempts", async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, target_level, achieved_level, topic, feedback, created_at
+       FROM essay_attempts
+       ORDER BY created_at DESC, id DESC
+       LIMIT 100`
+    );
+    return res.json({
+      attempts: result.rows.map((r: any) => ({
+        id: r.id,
+        targetLevel: r.target_level,
+        achievedLevel: r.achieved_level,
+        topic: r.topic,
+        feedback: r.feedback,
+        createdAt: r.created_at,
+      })),
+    });
+  } catch (e) {
+    console.error("List essay attempts error:", e);
+    return res.status(500).json({ error: "list failed" });
   }
 });
 

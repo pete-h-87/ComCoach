@@ -76,6 +76,27 @@ CREATE TABLE session_words (
 
 CREATE INDEX idx_session_words_session_id ON session_words(session_id);
 CREATE INDEX idx_session_words_word_lower ON session_words(LOWER(word));
+
+CREATE TABLE quiz_attempts (
+  id           SERIAL PRIMARY KEY,
+  quiz_type    TEXT NOT NULL,
+  difficulty   TEXT NOT NULL,
+  theme        TEXT,
+  total        INTEGER NOT NULL,
+  correct      INTEGER NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE essay_attempts (
+  id              SERIAL PRIMARY KEY,
+  target_level    TEXT NOT NULL,
+  achieved_level  TEXT NOT NULL,
+  topic           TEXT NOT NULL,
+  essay_text      TEXT NOT NULL,
+  corrected_text  TEXT NOT NULL,
+  feedback        TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
 Apply it:
@@ -188,6 +209,12 @@ ComCoach/
 | GET    | `/api/words`                                            | All unique saved words                                    |
 | GET    | `/api/quiz?type=recent\|random\|theme&theme=X&limit=10` | Word set for a quiz                                       |
 | POST   | `/api/quiz/check`                                       | Grade a typed quiz answer (Gemini)                        |
+| POST   | `/api/quiz/attempts`                                    | Record a finished quiz attempt                            |
+| GET    | `/api/quiz/attempts`                                    | List recent quiz attempts (most recent 100)               |
+| POST   | `/api/essay/prompt`                                     | Generate a writing prompt at a CEFR level (Gemini)        |
+| POST   | `/api/essay/grade`                                      | Grade an essay, return level + corrections (Gemini)       |
+| POST   | `/api/essay/attempts`                                   | Record a graded essay attempt                             |
+| GET    | `/api/essay/attempts`                                   | List recent essay attempts (most recent 100)              |
 
 ---
 
