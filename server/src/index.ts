@@ -88,13 +88,18 @@ app.post("/api/define", async (req, res) => {
     return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
   }
 
+  const isPhrase = /\s/.test(word.trim());
   const prompt = [
-    `Norwegian word: "${word}"`,
+    isPhrase ? `Norwegian phrase: "${word}"` : `Norwegian word: "${word}"`,
     context ? `Sentence/paragraph it appears in: "${context}"` : `(no context provided)`,
     ``,
     `Return JSON with two fields:`,
-    `- "definitionNo": a concise Norwegian definition of the word as used in this context. Max 10 words. No example sentence. No filler.`,
-    `- "definitionEn": the single best one-word English translation. One word only.`,
+    isPhrase
+      ? `- "definitionNo": a concise Norwegian paraphrase or explanation of this phrase as used in this context. Max 12 words. No example sentence.`
+      : `- "definitionNo": a concise Norwegian definition of the word as used in this context. Max 10 words. No example sentence. No filler.`,
+    isPhrase
+      ? `- "definitionEn": the natural English translation of the phrase. As short and idiomatic as possible. Multi-word is fine.`
+      : `- "definitionEn": the single best one-word English translation. One word only.`,
   ].join("\n");
 
   try {
@@ -120,7 +125,9 @@ app.post("/api/define", async (req, res) => {
 
     const parsed = JSON.parse(result.text);
     const definitionNo = String(parsed.definitionNo ?? "").trim();
-    const definitionEn = String(parsed.definitionEn ?? "").trim().split(/\s+/)[0] ?? "";
+    const rawEn = String(parsed.definitionEn ?? "").trim();
+    // For phrases, keep the full translation; for single words, enforce one-word.
+    const definitionEn = isPhrase ? rawEn : (rawEn.split(/\s+/)[0] ?? "");
 
     return res.json({ definitionNo, definitionEn });
   } catch (e) {

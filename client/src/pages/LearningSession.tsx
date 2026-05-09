@@ -342,98 +342,117 @@ export default function LearningSession() {
     return y;
   };
 
+  // Shared lookup logic used by both double-click (single word) and mouseup (multi-word phrase).
+  const lookupSelection = useCallback(
+    (selectedText: string, range: Range) => {
+      const rect = range.getBoundingClientRect();
+      const container = sessionRef.current;
+      const panel = panelRef.current;
+      if (!container || !panel) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+
+      const wordX = (rect.left + rect.right) / 2 - containerRect.left;
+      const wordY = rect.top + rect.height / 2 - containerRect.top;
+
+      const wordCenterInPanel = (rect.left + rect.right) / 2;
+      const panelCenter = (panelRect.left + panelRect.right) / 2;
+
+      const panelLeftRel = panelRect.left - containerRect.left;
+      const panelRightRel = panelRect.right - containerRect.left;
+
+      let side: "left" | "right";
+      let bubbleX: number;
+
+      if (wordCenterInPanel <= panelCenter) {
+        side = "left";
+        bubbleX = panelLeftRel - BUBBLE_WIDTH - MARGIN_GAP;
+        if (bubbleX < 8) bubbleX = 8;
+      } else {
+        side = "right";
+        bubbleX = panelRightRel + MARGIN_GAP;
+      }
+
+      const desiredY = wordY - 20;
+      const bubbleY = findNonOverlappingY(
+        desiredY,
+        side,
+        annotations,
+        containerRect.height,
+        panelLeftRel,
+        panelRightRel
+      );
+
+      // Capture the surrounding paragraph as context for in-context definition.
+      let context = "";
+      let node: Node | null = range.startContainer;
+      while (node && node !== panel) {
+        if (node instanceof HTMLElement && node.tagName === "P") {
+          context = node.textContent ?? "";
+          break;
+        }
+        node = node.parentNode;
+      }
+
+      const lookupWord = selectedText.toLowerCase();
+      const color = ANNOTATION_COLORS[annotations.length % ANNOTATION_COLORS.length];
+      setAnnotations((prev) => [
+        ...prev,
+        {
+          word: lookupWord,
+          context,
+          definitionNo: t.looking,
+          definitionEn: t.looking,
+          status: "loading",
+          showEnglish: false,
+          color,
+          wordX,
+          wordY,
+          bubbleX,
+          bubbleY,
+        },
+      ]);
+
+      // Clear the browser selection so the user doesn't have to click away first.
+      window.getSelection()?.removeAllRanges();
+
+      fetchDefinitions(lookupWord, context).then((result) => {
+        setAnnotations((prev) =>
+          prev.map((a) =>
+            a.word === lookupWord && a.status === "loading"
+              ? {
+                  ...a,
+                  definitionNo: result.definitionNo,
+                  definitionEn: result.definitionEn,
+                  status: result.ok ? "ready" : "failed",
+                }
+              : a
+          )
+        );
+      });
+    },
+    [annotations, t.looking]
+  );
+
   const handleDoubleClick = useCallback(() => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
+    const text = selection.toString().trim();
+    if (!text || text.includes(" ")) return;
+    lookupSelection(text, selection.getRangeAt(0));
+  }, [lookupSelection]);
 
-    const word = selection.toString().trim();
-    if (!word || word.includes(" ")) return;
-
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    const container = sessionRef.current;
-    const panel = panelRef.current;
-    if (!container || !panel) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-
-    const wordX = (rect.left + rect.right) / 2 - containerRect.left;
-    const wordY = rect.top + rect.height / 2 - containerRect.top;
-
-    const wordCenterInPanel = (rect.left + rect.right) / 2;
-    const panelCenter = (panelRect.left + panelRect.right) / 2;
-
-    const panelLeftRel = panelRect.left - containerRect.left;
-    const panelRightRel = panelRect.right - containerRect.left;
-
-    let side: "left" | "right";
-    let bubbleX: number;
-
-    if (wordCenterInPanel <= panelCenter) {
-      side = "left";
-      bubbleX = panelLeftRel - BUBBLE_WIDTH - MARGIN_GAP;
-      if (bubbleX < 8) bubbleX = 8;
-    } else {
-      side = "right";
-      bubbleX = panelRightRel + MARGIN_GAP;
-    }
-
-    const desiredY = wordY - 20;
-    const bubbleY = findNonOverlappingY(
-      desiredY,
-      side,
-      annotations,
-      containerRect.height,
-      panelLeftRel,
-      panelRightRel
-    );
-
-    // Capture the surrounding paragraph as context for in-context definition.
-    let context = "";
-    let node: Node | null = range.startContainer;
-    while (node && node !== panel) {
-      if (node instanceof HTMLElement && node.tagName === "P") {
-        context = node.textContent ?? "";
-        break;
-      }
-      node = node.parentNode;
-    }
-
-    const lookupWord = word.toLowerCase();
-    const color = ANNOTATION_COLORS[annotations.length % ANNOTATION_COLORS.length];
-    setAnnotations((prev) => [
-      ...prev,
-      {
-        word: lookupWord,
-        context,
-        definitionNo: "Looking up...",
-        definitionEn: "Looking up...",
-        status: "loading",
-        showEnglish: false,
-        color,
-        wordX,
-        wordY,
-        bubbleX,
-        bubbleY,
-      },
-    ]);
-
-    fetchDefinitions(lookupWord, context).then((result) => {
-      setAnnotations((prev) =>
-        prev.map((a) =>
-          a.word === lookupWord && a.status === "loading"
-            ? {
-                ...a,
-                definitionNo: result.definitionNo,
-                definitionEn: result.definitionEn,
-                status: result.ok ? "ready" : "failed",
-              }
-            : a
-        )
-      );
-    });
-  }, [annotations]);
+  // Handles drag-selected phrases (multi-word). Single-word selections are left to onDoubleClick.
+  const handlePanelMouseUp = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    const text = selection.toString().trim();
+    if (!text || !text.includes(" ")) return;
+    // Skip oversized selections (e.g. accidental triple-click on a long paragraph).
+    if (text.split(/\s+/).length > 15) return;
+    lookupSelection(text, selection.getRangeAt(0));
+  }, [lookupSelection]);
 
   const retryAnnotation = useCallback((index: number) => {
     setAnnotations((prev) =>
@@ -632,6 +651,7 @@ export default function LearningSession() {
         className={`reading-panel${loadedText ? "" : " reading-panel--empty"}`}
         ref={panelRef}
         onDoubleClick={handleDoubleClick}
+        onMouseUp={handlePanelMouseUp}
       >
         {loadedText ? (
           <>
