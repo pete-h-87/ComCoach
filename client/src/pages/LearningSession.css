@@ -284,3 +284,79 @@
 .load-text-overlay button:hover {
   background: #0f3460;
 }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .learning-session {
+    padding: 1rem;
+    min-height: calc(100vh - 9rem);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.85rem;
+  }
+
+  .reading-panel {
+    width: 100%;
+    padding: 1.25rem 1.25rem;
+    font-size: 1rem;
+    line-height: 1.65;
+    min-height: 220px;
+    order: 1;
+  }
+
+  .session-theme {
+    font-size: 1.05rem;
+  }
+
+  /* Hide the SVG connector lines on mobile — annotations stack below */
+  .connector-lines {
+    display: none;
+  }
+
+  /* Annotations stack vertically below the panel */
+  .annotation-card {
+    position: static;
+    width: auto !important;
+    max-width: 100%;
+    order: 2;
+    cursor: default;
+    user-select: text;
+  }
+
+  .annotation-card:active {
+    cursor: default;
+  }
+
+  .session-controls {
+    position: static;
+    transform: none;
+    order: 3;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+
+  .session-controls button {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .load-text-overlay {
+    padding: 0.75rem;
+  }
+
+  .load-text-overlay textarea {
+    width: 100%;
+    padding: 1rem 1.1rem;
+    font-size: 1rem;
+    line-height: 1.65;
+    min-height: 240px;
+  }
+
+  .paste-button {
+    padding: 0.7rem 1.75rem;
+    font-size: 0.95rem;
+  }
+}

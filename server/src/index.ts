@@ -226,6 +226,186 @@ app.post("/api/sessions", async (req, res) => {
   }
 });
 
+// Grades a quiz answer with Gemini.
+// Body: { word, expectedAnswer, userAnswer, language: "en" | "no" }
+// Returns: { correct: boolean, feedback: string }
+app.post("/api/quiz/check", async (req, res) => {
+  const { word, expectedAnswer, userAnswer, language } = req.body ?? {};
+
+  if (typeof word !== "string" || !word.trim()) {
+    return res.status(400).json({ error: "word required" });
+  }
+  if (typeof expectedAnswer !== "string") {
+    return res.status(400).json({ error: "expectedAnswer required" });
+  }
+  if (typeof userAnswer !== "string") {
+    return res.status(400).json({ error: "userAnswer required" });
+  }
+  if (language !== "en" && language !== "no") {
+    return res.status(400).json({ error: "language must be 'en' or 'no'" });
+  }
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+  }
+
+  // Quick reject for empty answers — saves a Gemini call.
+  if (!userAnswer.trim()) {
+    return res.json({ correct: false, feedback: "No answer provided." });
+  }
+
+  const langLabel = language === "en" ? "English" : "Norwegian";
+  const prompt = [
+    `You are grading one vocabulary quiz answer.`,
+    `Norwegian word: "${word}"`,
+    `Expected answer (in ${langLabel}): "${expectedAnswer}"`,
+    `User's answer: "${userAnswer}"`,
+    ``,
+    `Decide if the user's answer is essentially correct. Be lenient with:`,
+    `- minor spelling errors or accents`,
+    `- synonyms, paraphrases, or different valid translations`,
+    `- equivalent ways of expressing the same meaning`,
+    ``,
+    `Be strict with:`,
+    `- factually wrong meanings`,
+    `- empty, off-topic, or gibberish answers`,
+    ``,
+    `Return JSON:`,
+    `- "correct": boolean`,
+    `- "feedback": one short sentence (max 15 words) explaining the verdict`,
+  ].join("\n");
+
+  try {
+    const result = await callGeminiWithRetry({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            correct: { type: "BOOLEAN" },
+            feedback: { type: "STRING" },
+          },
+          required: ["correct", "feedback"],
+        },
+        temperature: 0.1,
+      },
+    });
+
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
+    }
+
+    const parsed = JSON.parse(result.text);
+    return res.json({
+      correct: !!parsed.correct,
+      feedback: String(parsed.feedback ?? "").trim(),
+    });
+  } catch (e) {
+    console.error("Quiz check error:", e);
+    return res.status(500).json({ error: "check failed" });
+  }
+});
+
+// Lists distinct session themes (for the quiz subject picker).
+app.get("/api/themes", async (_req, res) => {
+  try {
+    const result = await pool.query<{ session_theme: string }>(
+      `SELECT DISTINCT session_theme
+       FROM sessions
+       WHERE session_theme IS NOT NULL AND session_theme <> ''
+       ORDER BY session_theme ASC`
+    );
+    return res.json({ themes: result.rows.map((r) => r.session_theme) });
+  } catch (e) {
+    console.error("List themes error:", e);
+    return res.status(500).json({ error: "list failed" });
+  }
+});
+
+// Returns a quiz word set.
+// Query: type=recent|random|theme, theme=<string> (when type=theme), limit=<n> (default 10)
+app.get("/api/quiz", async (req, res) => {
+  const type = String(req.query.type ?? "");
+  const limit = Math.max(1, Math.min(50, Number(req.query.limit ?? 10) || 10));
+  const theme = typeof req.query.theme === "string" ? req.query.theme : "";
+
+  if (!["recent", "random", "theme"].includes(type)) {
+    return res.status(400).json({ error: "invalid type" });
+  }
+  if (type === "theme" && !theme.trim()) {
+    return res.status(400).json({ error: "theme required" });
+  }
+
+  try {
+    let query: string;
+    let params: unknown[];
+
+    if (type === "recent") {
+      query = `
+        SELECT * FROM (
+          SELECT DISTINCT ON (LOWER(sw.word))
+            sw.id, sw.word, sw.definition_no, sw.definition_en,
+            s.session_theme, s.created_at
+          FROM session_words sw
+          JOIN sessions s ON s.id = sw.session_id
+          ORDER BY LOWER(sw.word), sw.id DESC
+        ) t
+        ORDER BY t.created_at DESC, t.id DESC
+        LIMIT $1`;
+      params = [limit];
+    } else if (type === "random") {
+      query = `
+        SELECT * FROM (
+          SELECT DISTINCT ON (LOWER(sw.word))
+            sw.id, sw.word, sw.definition_no, sw.definition_en,
+            s.session_theme, s.created_at
+          FROM session_words sw
+          JOIN sessions s ON s.id = sw.session_id
+          ORDER BY LOWER(sw.word), sw.id DESC
+        ) t
+        ORDER BY RANDOM()
+        LIMIT $1`;
+      params = [limit];
+    } else {
+      query = `
+        SELECT * FROM (
+          SELECT DISTINCT ON (LOWER(sw.word))
+            sw.id, sw.word, sw.definition_no, sw.definition_en,
+            s.session_theme, s.created_at
+          FROM session_words sw
+          JOIN sessions s ON s.id = sw.session_id
+          WHERE s.session_theme = $1
+          ORDER BY LOWER(sw.word), sw.id DESC
+        ) t
+        ORDER BY t.created_at DESC, t.id DESC
+        LIMIT $2`;
+      params = [theme, limit];
+    }
+
+    const result = await pool.query<{
+      id: number;
+      word: string;
+      definition_no: string;
+      definition_en: string;
+      session_theme: string | null;
+      created_at: string;
+    }>(query, params);
+
+    return res.json({
+      words: result.rows.map((r) => ({
+        id: r.id,
+        word: r.word,
+        definitionNo: r.definition_no,
+        definitionEn: r.definition_en,
+        sessionTheme: r.session_theme,
+      })),
+    });
+  } catch (e) {
+    console.error("Quiz fetch error:", e);
+    return res.status(500).json({ error: "fetch failed" });
+  }
+});
+
 // Lists all unique words ever saved, newest first.
 // Dedupes by lowercase word; keeps the most recent definition.
 app.get("/api/words", async (_req, res) => {

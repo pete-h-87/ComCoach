@@ -3,12 +3,24 @@
   min-height: calc(100vh - 4rem);
 }
 
+@media (max-width: 768px) {
+  .word-list-page {
+    padding: 1rem 0.5rem;
+  }
+}
+
 .word-list-page h2 {
   margin: 0 0 0.5rem;
 }
 
+@media (max-width: 768px) {
+  .word-list-page h2 {
+    font-size: 1.3rem;
+  }
+}
+
 .word-list-subtitle {
-  color: #555;
+  color: #ffffff;
   margin: 0 0 1.5rem;
 }
 
@@ -26,7 +38,19 @@
 
 @media (max-width: 800px) {
   .word-list-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 500px) {
+  .word-list-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .word-chip {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.92rem;
   }
 }
 
@@ -44,7 +68,10 @@
   cursor: pointer;
   font-family: inherit;
   color: #222;
-  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.05s;
   text-align: center;
   word-break: break-word;
 }
@@ -81,8 +108,12 @@
 }
 
 @keyframes word-popup-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Override .annotation-card absolute positioning + grab cursor for modal usage */

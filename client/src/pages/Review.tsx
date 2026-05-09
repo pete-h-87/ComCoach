@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import "./Practice.css";
+import "./Review.css";
 
 interface SessionSummary {
   id: number;
@@ -28,7 +28,7 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function Practice() {
+export default function Review() {
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -65,20 +65,20 @@ export default function Practice() {
     [expandedId, details]
   );
 
-  if (error) return <div className="practice-page"><p className="practice-error">{error}</p></div>;
-  if (!sessions) return <div className="practice-page"><p className="practice-loading">Loading sessions...</p></div>;
+  if (error) return <div className="review-page"><p className="review-error">{error}</p></div>;
+  if (!sessions) return <div className="review-page"><p className="review-loading">Loading sessions...</p></div>;
   if (sessions.length === 0) {
     return (
-      <div className="practice-page">
-        <h2 className="practice-title">Practice</h2>
-        <p className="practice-empty">No saved sessions yet. Start a learning session and save one.</p>
+      <div className="review-page">
+        <h2 className="review-title">Review</h2>
+        <p className="review-empty">No saved sessions yet. Start a learning session and save one.</p>
       </div>
     );
   }
 
   return (
-    <div className="practice-page">
-      <h2 className="practice-title">Practice</h2>
+    <div className="review-page">
+      <h2 className="review-title">Review</h2>
       <ul className="session-list">
         {sessions.map((s) => {
           const isOpen = expandedId === s.id;
@@ -97,7 +97,7 @@ export default function Practice() {
               {isOpen && (
                 <div className="session-body">
                   {loadingId === s.id && !detail ? (
-                    <p className="practice-loading">Loading…</p>
+                    <p className="review-loading">Loading…</p>
                   ) : detail ? (
                     <div className="session-content">
                       <div className="session-text">

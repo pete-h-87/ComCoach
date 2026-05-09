@@ -1,4 +1,4 @@
-.practice-page {
+.review-page {
   min-height: calc(100vh - 4rem);
   background: #7b95ac;
   border-radius: 16px;
@@ -6,22 +6,54 @@
   color: #1a1a2e;
 }
 
-.practice-title {
+@media (max-width: 768px) {
+  .review-page {
+    padding: 1.25rem 1.1rem;
+    border-radius: 12px;
+    min-height: calc(100vh - 9rem);
+  }
+
+  .review-title {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+  }
+
+  .session-header {
+    grid-template-columns: 1fr auto;
+    padding: 0.85rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .session-date {
+    grid-column: 1 / -1;
+    font-size: 0.78rem;
+  }
+
+  .session-body {
+    padding: 1rem 1rem 1.1rem;
+  }
+
+  .session-theme-label {
+    font-size: 1rem;
+  }
+}
+
+.review-title {
   margin: 0 0 1.5rem;
   font-size: 1.6rem;
   color: #fff;
   letter-spacing: 0.3px;
 }
 
-.practice-loading,
-.practice-error,
-.practice-empty {
+.review-loading,
+.review-error,
+.review-empty {
   color: #fff;
   font-size: 1rem;
   margin: 0;
 }
 
-.practice-error {
+.review-error {
   color: #ffd6d6;
 }
 
