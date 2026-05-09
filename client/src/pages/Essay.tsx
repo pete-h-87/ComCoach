@@ -8,6 +8,9 @@ const TEXT = {
   en: {
     title: "Short Essay",
     targetLevel: "Target Level",
+    subject: "Subject",
+    anySubject: "Random Question",
+    generateQuestion: "Generate Question",
     topic: "Topic",
     generating: "Generating a prompt…",
     newPrompt: "New Prompt",
@@ -23,10 +26,15 @@ const TEXT = {
     networkError: "Network error.",
     failedGrade: "Grading failed.",
     networkGrade: "Network error during grading.",
+    recentEssays: "Recent Essays",
+    aimedFor: "aimed for",
   },
   no: {
     title: "Kort essay",
     targetLevel: "Målnivå",
+    subject: "Tema",
+    anySubject: "Tilfeldig spørsmål",
+    generateQuestion: "Generer spørsmål",
     topic: "Emne",
     generating: "Genererer et emne…",
     newPrompt: "Nytt emne",
@@ -42,6 +50,8 @@ const TEXT = {
     networkError: "Nettverksfeil.",
     failedGrade: "Vurdering mislyktes.",
     networkGrade: "Nettverksfeil under vurdering.",
+    recentEssays: "Siste essayer",
+    aimedFor: "siktet på",
   },
 };
 
@@ -62,6 +72,14 @@ interface GradeResult {
   notes: GradeNote[];
 }
 
+interface RecentEssay {
+  id: number;
+  targetLevel: Level;
+  achievedLevel: Level;
+  topic: string;
+  createdAt: string;
+}
+
 const LEVELS: Level[] = ["A1", "A2", "B1", "B2"];
 
 export default function Essay() {
@@ -74,8 +92,20 @@ export default function Essay() {
   const [grading, setGrading] = useState(false);
   const [result, setResult] = useState<GradeResult | null>(null);
   const [error, setError] = useState("");
+  const [recentEssays, setRecentEssays] = useState<RecentEssay[]>([]);
+  const [themes, setThemes] = useState<string[]>([]);
+  const [selectedTheme, setSelectedTheme] = useState("");
 
-  const fetchPrompt = async (level: Level) => {
+  const loadRecentEssays = () => {
+    fetch("/api/essay/attempts")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => setRecentEssays((data.attempts ?? []).slice(0, 5)))
+      .catch(() => {
+        // Non-fatal
+      });
+  };
+
+  const fetchPrompt = async (level: Level, theme: string = selectedTheme) => {
     setLoadingPrompt(true);
     setError("");
     setResult(null);
@@ -84,7 +114,7 @@ export default function Essay() {
       const res = await fetch("/api/essay/prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ level }),
+        body: JSON.stringify({ level, theme: theme || undefined }),
       });
       if (!res.ok) {
         setError(t.failedPrompt);
@@ -102,7 +132,13 @@ export default function Essay() {
   };
 
   useEffect(() => {
-    fetchPrompt(targetLevel);
+    loadRecentEssays();
+    fetch("/api/themes")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => setThemes(data.themes ?? []))
+      .catch(() => {
+        // Non-fatal — themes just won't be available
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -135,7 +171,7 @@ export default function Essay() {
           correctedText: data.correctedText,
           feedback: data.feedback,
         }),
-      }).catch(() => {
+      }).then(() => loadRecentEssays()).catch(() => {
         // Silent — scoring failure shouldn't block the UI.
       });
     } catch {
@@ -159,10 +195,7 @@ export default function Essay() {
             className={`essay-level-btn ${
               targetLevel === lvl ? "essay-level-btn--selected" : ""
             }`}
-            onClick={() => {
-              setTargetLevel(lvl);
-              fetchPrompt(lvl);
-            }}
+            onClick={() => setTargetLevel(lvl)}
             disabled={loadingPrompt || grading}
           >
             {lvl}
@@ -170,7 +203,27 @@ export default function Essay() {
         ))}
       </div>
 
-      {loadingPrompt && <p className="essay-status">{t.generating}</p>}
+      <p className="essay-section-label">{t.subject}</p>
+      <div className="essay-subject-row">
+        <select
+          className="essay-subject-select"
+          value={selectedTheme}
+          onChange={(e) => setSelectedTheme(e.target.value)}
+          disabled={loadingPrompt || grading}
+        >
+          <option value="">{t.anySubject}</option>
+          {themes.map((th) => (
+            <option key={th} value={th}>{th}</option>
+          ))}
+        </select>
+        <button
+          className="essay-button essay-button-primary"
+          onClick={() => fetchPrompt(targetLevel, selectedTheme)}
+          disabled={loadingPrompt || grading}
+        >
+          {loadingPrompt ? t.generating : t.generateQuestion}
+        </button>
+      </div>
 
       {prompt && !loadingPrompt && (
         <>
@@ -264,6 +317,33 @@ export default function Essay() {
               {t.rewriteSame}
             </button>
           </div>
+        </div>
+      )}
+
+      {recentEssays.length > 0 && (
+        <div className="essay-recent">
+          <p className="essay-section-label">{t.recentEssays}</p>
+          <ul className="essay-recent-list">
+            {recentEssays.map((r) => (
+              <li key={r.id} className="essay-recent-row">
+                <span className={`essay-recent-level essay-recent-level--${r.achievedLevel}`}>
+                  {r.achievedLevel}
+                </span>
+                <div className="essay-recent-meta">
+                  <span className="essay-recent-topic">{r.topic}</span>
+                  <span className="essay-recent-aim">
+                    {t.aimedFor} {r.targetLevel}
+                  </span>
+                </div>
+                <span className="essay-recent-date">
+                  {new Date(r.createdAt).toLocaleDateString(
+                    lang === "no" ? "nb-NO" : undefined,
+                    { month: "short", day: "numeric" }
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

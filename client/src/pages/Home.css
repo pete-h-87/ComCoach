@@ -52,6 +52,7 @@
 .home-card--words    { border-top-color: #f77f00; }
 .home-card--quiz     { border-top-color: #7209b7; }
 .home-card--essay    { border-top-color: #d62828; }
+.home-card--stats    { border-top-color: #d4a017; }
 
 .home-card-header {
   display: flex;

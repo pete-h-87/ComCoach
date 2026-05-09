@@ -20,6 +20,16 @@ interface GradedWord extends QuizWord {
   feedback: string;
 }
 
+interface RecentQuizAttempt {
+  id: number;
+  quizType: string;
+  difficulty: string;
+  theme: string | null;
+  total: number;
+  correct: number;
+  createdAt: string;
+}
+
 const TEXT = {
   en: {
     title: "Quiz",
@@ -61,6 +71,7 @@ const TEXT = {
     networkError: "Network error.",
     gradingUnavailable: "Grading unavailable — counted as missed.",
     networkMissed: "Network error — counted as missed.",
+    recentScores: "Recent Scores",
   },
   no: {
     title: "Quiz",
@@ -102,6 +113,7 @@ const TEXT = {
     networkError: "Nettverksfeil.",
     gradingUnavailable: "Vurdering utilgjengelig — regnet som bommet.",
     networkMissed: "Nettverksfeil — regnet som bommet.",
+    recentScores: "Siste resultater",
   },
 };
 
@@ -120,6 +132,7 @@ export default function Quiz() {
   const [result, setResult] = useState<{ correct: boolean; feedback: string } | null>(null);
   const [graded, setGraded] = useState<GradedWord[]>([]);
   const [error, setError] = useState("");
+  const [recentAttempts, setRecentAttempts] = useState<RecentQuizAttempt[]>([]);
 
   useEffect(() => {
     fetch("/api/themes")
@@ -131,7 +144,14 @@ export default function Quiz() {
       .catch(() => {
         // Non-fatal — themes just won't be available
       });
-  }, []);
+
+    fetch("/api/quiz/attempts")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => setRecentAttempts((data.attempts ?? []).slice(0, 5)))
+      .catch(() => {
+        // Non-fatal
+      });
+  }, [phase]);
 
   const startQuiz = async () => {
     setPhase("loading");
@@ -322,6 +342,40 @@ export default function Quiz() {
           >
             {t.startQuiz}
           </button>
+
+          {recentAttempts.length > 0 && (
+            <div className="quiz-recent">
+              <p className="quiz-section-label">{t.recentScores}</p>
+              <ul className="quiz-recent-list">
+                {recentAttempts.map((a) => (
+                  <li key={a.id} className="quiz-recent-row">
+                    <span className="quiz-recent-score">
+                      {a.correct}/{a.total}
+                      <span className="quiz-recent-pct">
+                        {Math.round((a.correct / a.total) * 100)}%
+                      </span>
+                    </span>
+                    <span className="quiz-recent-meta">
+                      {a.quizType === "recent"
+                        ? t.typeRecentTitle
+                        : a.quizType === "random"
+                        ? t.typeRandomTitle
+                        : t.typeThemeTitle}
+                      {a.theme ? ` · ${a.theme}` : ""}
+                      {" · "}
+                      {a.difficulty === "beginner" ? t.diffBeginnerTitle : t.diffExpertTitle}
+                    </span>
+                    <span className="quiz-recent-date">
+                      {new Date(a.createdAt).toLocaleDateString(
+                        lang === "no" ? "nb-NO" : undefined,
+                        { month: "short", day: "numeric" }
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -433,6 +487,9 @@ export default function Quiz() {
         <div className="quiz-score">
           {correctCount}
           <span className="quiz-score-fraction">/{graded.length}</span>
+          <div className="quiz-score-pct">
+            {graded.length > 0 ? Math.round((correctCount / graded.length) * 100) : 0}%
+          </div>
         </div>
 
         <div className="quiz-summary">

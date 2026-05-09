@@ -231,6 +231,7 @@ app.post("/api/sessions", async (req, res) => {
 // Returns: { prompt: string, promptEn: string }
 app.post("/api/essay/prompt", async (req, res) => {
   const level = String(req.body?.level ?? "B1");
+  const theme = typeof req.body?.theme === "string" ? req.body.theme.trim() : "";
   if (!["A1", "A2", "B1", "B2"].includes(level)) {
     return res.status(400).json({ error: "invalid level" });
   }
@@ -241,7 +242,9 @@ app.post("/api/essay/prompt", async (req, res) => {
   const promptText = [
     `Generate a short writing prompt for a Norwegian (Bokmål) language learner at CEFR level ${level}.`,
     `The prompt should ask the learner to write one paragraph (about 5-8 sentences) on a concrete, everyday topic.`,
-    `Pick a fresh topic — vary across personal life, opinions, descriptions, hypotheticals, daily routines, or culture.`,
+    theme
+      ? `The prompt MUST be related to this subject the learner has been studying: "${theme}". Frame the question or scenario around that subject.`
+      : `The prompt should resemble the kind of writing tasks asked on the official Norwegian language exams (Norskprøven / Bergenstesten) at CEFR level ${level}. Typical task types: describing personal experiences, daily routines, work or studies, society and culture, opinions on familiar issues, comparing two things, and — for B1/B2 — argumentative or analytical writing on social topics (e.g. environment, technology, work-life balance, integration, education, urban vs. rural life). Vary the topic type each time.`,
     ``,
     `Return JSON:`,
     `- "prompt": the writing prompt itself, in Norwegian (Bokmål). One or two sentences. End with a period or question mark.`,
@@ -764,6 +767,36 @@ app.get("/api/essay/attempts", async (_req, res) => {
   } catch (e) {
     console.error("List essay attempts error:", e);
     return res.status(500).json({ error: "list failed" });
+  }
+});
+
+// Full essay attempt including original text + corrected text.
+app.get("/api/essay/attempts/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "invalid id" });
+  try {
+    const result = await pool.query(
+      `SELECT id, target_level, achieved_level, topic, essay_text,
+              corrected_text, feedback, created_at
+       FROM essay_attempts
+       WHERE id = $1`,
+      [id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: "not found" });
+    const r: any = result.rows[0];
+    return res.json({
+      id: r.id,
+      targetLevel: r.target_level,
+      achievedLevel: r.achieved_level,
+      topic: r.topic,
+      essayText: r.essay_text,
+      correctedText: r.corrected_text,
+      feedback: r.feedback,
+      createdAt: r.created_at,
+    });
+  } catch (e) {
+    console.error("Get essay attempt error:", e);
+    return res.status(500).json({ error: "fetch failed" });
   }
 });
 

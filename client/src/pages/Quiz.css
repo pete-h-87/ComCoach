@@ -262,6 +262,70 @@
   font-style: italic;
 }
 
+/* ---------- Recent attempts panel ---------- */
+.quiz-recent {
+  margin-top: 1rem;
+}
+
+.quiz-recent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.quiz-recent-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.85rem;
+  background: #e9eff7;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.quiz-recent-score {
+  font-weight: 700;
+  color: #1a1a2e;
+  background: #d6e0eb;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.quiz-recent-pct {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #5b6878;
+}
+
+.quiz-recent-meta {
+  color: #1a1a2e;
+}
+
+.quiz-recent-date {
+  font-size: 0.78rem;
+  color: #6b7a8e;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .quiz-recent-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .quiz-recent-date {
+    grid-column: 2;
+    font-size: 0.72rem;
+  }
+}
+
 .quiz-actions {
   display: flex;
   gap: 0.75rem;
@@ -320,12 +384,22 @@
   font-weight: 800;
   color: #fff;
   letter-spacing: 1px;
+  text-align: center;
+  line-height: 1;
 }
 
 .quiz-score-fraction {
   font-size: 1.5rem;
   color: #cdd9e4;
   margin-left: 0.25rem;
+}
+
+.quiz-score-pct {
+  font-size: 1.1rem;
+  color: #cdd9e4;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 0.25rem;
 }
 
 .quiz-summary {

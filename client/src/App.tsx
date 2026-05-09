@@ -5,6 +5,7 @@ import LearningSession from "./pages/LearningSession";
 import Review from "./pages/Review";
 import Quiz from "./pages/Quiz";
 import Essay from "./pages/Essay";
+import Stats from "./pages/Stats";
 import WordList from "./pages/WordList";
 import { LangProvider } from "./lib/lang";
 
@@ -19,6 +20,7 @@ function App() {
             <Route path="/review" element={<Review />} />
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/essay" element={<Essay />} />
+            <Route path="/stats" element={<Stats />} />
             <Route path="/word-list" element={<WordList />} />
           </Route>
         </Routes>

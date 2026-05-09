@@ -10,6 +10,7 @@ const LABELS = {
     review: "Review",
     quiz: "Quiz!",
     essay: "Short Essay",
+    stats: "Scores",
     wordList: "My Word List",
   },
   no: {
@@ -18,6 +19,7 @@ const LABELS = {
     review: "Gjennomgang",
     quiz: "Quiz!",
     essay: "Kort essay",
+    stats: "Resultater",
     wordList: "Min ordliste",
   },
 };
@@ -50,6 +52,7 @@ export default function Layout() {
           <li><NavLink to="/review">{t.review}</NavLink></li>
           <li><NavLink to="/quiz">{t.quiz}</NavLink></li>
           <li><NavLink to="/essay">{t.essay}</NavLink></li>
+          <li><NavLink to="/stats">{t.stats}</NavLink></li>
           <li><NavLink to="/word-list">{t.wordList}</NavLink></li>
         </ul>
         <div className="sidebar-footer">

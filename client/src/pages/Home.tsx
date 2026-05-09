@@ -15,6 +15,15 @@ interface WordSummary {
   createdAt: string;
 }
 
+interface QuizAttempt {
+  total: number;
+  correct: number;
+}
+
+interface EssayAttempt {
+  achievedLevel: string;
+}
+
 const TEXT = {
   en: {
     title: "Welcome back",
@@ -45,6 +54,11 @@ const TEXT = {
     essayCta: "Write a paragraph on an AI-given topic, get a CEFR grade.",
     essayDetailPre: "Pick a level (",
     essayDetailMid: "), get a prompt, write, and receive corrections.",
+    statsTitle: "Scores & History",
+    statsCta: "Browse all your past quiz scores and essay submissions.",
+    statsLastQuiz: "Last quiz:",
+    statsLastEssay: "Last essay:",
+    statsEmpty: "No scores yet — finish a quiz or essay to start your history.",
   },
   no: {
     title: "Velkommen tilbake",
@@ -75,6 +89,11 @@ const TEXT = {
     essayCta: "Skriv et avsnitt om et AI-gitt emne, og få en CEFR-karakter.",
     essayDetailPre: "Velg et nivå (",
     essayDetailMid: "), få et emne, skriv, og motta korrigeringer.",
+    statsTitle: "Resultater & Historikk",
+    statsCta: "Se alle dine tidligere quiz-resultater og essay-innleveringer.",
+    statsLastQuiz: "Forrige quiz:",
+    statsLastEssay: "Forrige essay:",
+    statsEmpty: "Ingen resultater ennå — fullfør en quiz eller et essay for å starte historikken.",
   },
 };
 
@@ -92,6 +111,8 @@ export default function Home() {
   const t = TEXT[lang];
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
   const [words, setWords] = useState<WordSummary[] | null>(null);
+  const [lastQuiz, setLastQuiz] = useState<QuizAttempt | null>(null);
+  const [lastEssay, setLastEssay] = useState<EssayAttempt | null>(null);
 
   useEffect(() => {
     fetch("/api/sessions")
@@ -103,6 +124,16 @@ export default function Home() {
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => setWords(data.words ?? []))
       .catch(() => setWords([]));
+
+    fetch("/api/quiz/attempts")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => setLastQuiz(data.attempts?.[0] ?? null))
+      .catch(() => {});
+
+    fetch("/api/essay/attempts")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => setLastEssay(data.attempts?.[0] ?? null))
+      .catch(() => {});
   }, []);
 
   const sessionCount = sessions?.length ?? 0;
@@ -214,6 +245,39 @@ export default function Home() {
             {t.essayDetailPre}
             <span className="home-card-detail-strong">A1–B2</span>
             {t.essayDetailMid}
+          </div>
+        </Link>
+
+        <Link to="/stats" className="home-card home-card--stats">
+          <div className="home-card-header">
+            <h3 className="home-card-title">{t.statsTitle}</h3>
+            <span className="home-card-arrow">→</span>
+          </div>
+          <div className="home-card-cta">{t.statsCta}</div>
+          <div className="home-card-detail">
+            {lastQuiz || lastEssay ? (
+              <>
+                {lastQuiz && (
+                  <>
+                    {t.statsLastQuiz}{" "}
+                    <span className="home-card-detail-strong">
+                      {lastQuiz.correct}/{lastQuiz.total} ({Math.round((lastQuiz.correct / lastQuiz.total) * 100)}%)
+                    </span>
+                    {lastEssay ? " · " : ""}
+                  </>
+                )}
+                {lastEssay && (
+                  <>
+                    {t.statsLastEssay}{" "}
+                    <span className="home-card-detail-strong">
+                      {lastEssay.achievedLevel}
+                    </span>
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="home-card-empty">{t.statsEmpty}</span>
+            )}
           </div>
         </Link>
       </div>
