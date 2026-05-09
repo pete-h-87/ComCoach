@@ -165,6 +165,43 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.4rem;
+  user-select: text;
+  cursor: text;
+}
+
+/* Smaller, ephemeral sub-bubble created by double-clicking inside another card. */
+.annotation-card.annotation-card--sub {
+  width: 180px !important;
+  background: #c9d8ea;
+  padding: 0.45rem 0.6rem 0.55rem;
+  cursor: default;
+  z-index: 20;
+  border: 1px solid rgba(26, 26, 46, 0.1);
+}
+
+.annotation-card--sub:active {
+  cursor: default;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.annotation-card--sub .annotation-word {
+  font-size: 0.85rem;
+}
+
+.annotation-card--sub .annotation-body {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  user-select: none;
+  cursor: default;
+}
+
+.annotation-card--sub .annotation-lang-toggle {
+  font-size: 0.6rem;
+  padding: 2px 5px;
+}
+
+.annotation-card--sub .annotation-close {
+  font-size: 1rem;
 }
 
 .annotation-retry {

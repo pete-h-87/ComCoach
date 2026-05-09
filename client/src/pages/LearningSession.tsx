@@ -63,6 +63,19 @@ interface Annotation {
   bubbleY: number;
 }
 
+// Ephemeral sub-annotations created by double-clicking a word inside an existing
+// annotation card. These are NOT persisted to the database.
+interface SubAnnotation {
+  id: number;
+  word: string;
+  definitionNo: string;
+  definitionEn: string;
+  status: "loading" | "ready" | "failed";
+  showEnglish: boolean;
+  x: number;
+  y: number;
+}
+
 const BUBBLE_HEIGHT_ESTIMATE = 90;
 const BUBBLE_WIDTH = 260;
 const MARGIN_GAP = 28;
@@ -121,9 +134,11 @@ export default function LearningSession() {
   const [themeStatus, setThemeStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
   const [showLoader, setShowLoader] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [subAnnotations, setSubAnnotations] = useState<SubAnnotation[]>([]);
   const sessionRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ index: number; offsetX: number; offsetY: number } | null>(null);
+  const subIdCounter = useRef(0);
 
   // Recalculate on resize
   const [, forceUpdate] = useState(0);
@@ -159,8 +174,13 @@ export default function LearningSession() {
   }, []);
 
   const handleDragStart = (e: React.MouseEvent, index: number) => {
-    // Don't start drag on the close button or language toggle
-    if ((e.target as HTMLElement).closest(".annotation-close, .annotation-lang-toggle")) return;
+    // Don't start drag on buttons or in the body (where the user double-clicks words).
+    if (
+      (e.target as HTMLElement).closest(
+        ".annotation-close, .annotation-lang-toggle, .annotation-body"
+      )
+    )
+      return;
     e.preventDefault();
     const container = sessionRef.current;
     if (!container) return;
@@ -171,6 +191,63 @@ export default function LearningSession() {
       offsetX: e.clientX - containerRect.left - ann.bubbleX,
       offsetY: e.clientY - containerRect.top - ann.bubbleY,
     };
+  };
+
+  const handleSubDoubleClick = (e: React.MouseEvent, parentIndex: number) => {
+    e.stopPropagation();
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    const word = selection.toString().trim();
+    if (!word || word.includes(" ")) return;
+
+    const container = sessionRef.current;
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+    const x = e.clientX - containerRect.left + 10;
+    const y = e.clientY - containerRect.top + 10;
+
+    const id = ++subIdCounter.current;
+    const lookupWord = word.toLowerCase();
+    const parentContext = annotations[parentIndex]?.context ?? "";
+
+    setSubAnnotations((prev) => [
+      ...prev,
+      {
+        id,
+        word: lookupWord,
+        definitionNo: t.looking,
+        definitionEn: t.looking,
+        status: "loading",
+        showEnglish: false,
+        x,
+        y,
+      },
+    ]);
+
+    fetchDefinitions(lookupWord, parentContext).then((result) => {
+      setSubAnnotations((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? {
+                ...s,
+                definitionNo: result.definitionNo,
+                definitionEn: result.definitionEn,
+                status: result.ok ? "ready" : "failed",
+              }
+            : s
+        )
+      );
+    });
+  };
+
+  const removeSubAnnotation = (id: number) => {
+    setSubAnnotations((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const toggleSubLanguage = (id: number) => {
+    setSubAnnotations((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, showEnglish: !s.showEnglish } : s))
+    );
   };
 
   const fetchTheme = useCallback(async (textToTheme: string) => {
@@ -205,6 +282,7 @@ export default function LearningSession() {
       if (!trimmed) return;
       setLoadedText(trimmed);
       setAnnotations([]);
+      setSubAnnotations([]);
       fetchTheme(trimmed);
     },
     [fetchTheme]
@@ -497,7 +575,10 @@ export default function LearningSession() {
               &times;
             </button>
           </div>
-          <div className="annotation-body">
+          <div
+            className="annotation-body"
+            onDoubleClick={(e) => handleSubDoubleClick(e, i)}
+          >
             {ann.showEnglish ? ann.definitionEn : ann.definitionNo}
             {ann.status === "failed" && (
               <button
@@ -513,6 +594,35 @@ export default function LearningSession() {
                 {t.retry}
               </button>
             )}
+          </div>
+        </div>
+      ))}
+
+      {/* Sub-annotation popups (ephemeral, not saved to DB) */}
+      {subAnnotations.map((s) => (
+        <div
+          key={s.id}
+          className="annotation-card annotation-card--sub"
+          style={{ top: s.y, left: s.x }}
+        >
+          <div className="annotation-header">
+            <strong className="annotation-word">{s.word}</strong>
+            <button
+              className="annotation-lang-toggle"
+              onClick={() => toggleSubLanguage(s.id)}
+              title={s.showEnglish ? t.showNorwegian : t.showEnglish}
+            >
+              {s.showEnglish ? "EN" : "NO"}
+            </button>
+            <button
+              className="annotation-close"
+              onClick={() => removeSubAnnotation(s.id)}
+            >
+              &times;
+            </button>
+          </div>
+          <div className="annotation-body">
+            {s.showEnglish ? s.definitionEn : s.definitionNo}
           </div>
         </div>
       ))}
@@ -568,7 +678,14 @@ export default function LearningSession() {
             : t.save}
         </button>
         {annotations.length > 0 && (
-          <button onClick={() => setAnnotations([])}>{t.clearAll}</button>
+          <button
+            onClick={() => {
+              setAnnotations([]);
+              setSubAnnotations([]);
+            }}
+          >
+            {t.clearAll}
+          </button>
         )}
       </div>
 
