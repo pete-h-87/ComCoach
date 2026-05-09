@@ -170,6 +170,7 @@ export default function Essay() {
           essayText: essay,
           correctedText: data.correctedText,
           feedback: data.feedback,
+          notes: data.notes,
         }),
       }).then(() => loadRecentEssays()).catch(() => {
         // Silent — scoring failure shouldn't block the UI.

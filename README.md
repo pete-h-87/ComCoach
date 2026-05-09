@@ -95,6 +95,7 @@ CREATE TABLE essay_attempts (
   essay_text      TEXT NOT NULL,
   corrected_text  TEXT NOT NULL,
   feedback        TEXT,
+  notes           JSONB,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```

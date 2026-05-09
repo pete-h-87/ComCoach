@@ -720,7 +720,7 @@ app.get("/api/quiz/attempts", async (_req, res) => {
 // ---------- Essay attempt records ----------
 
 app.post("/api/essay/attempts", async (req, res) => {
-  const { targetLevel, achievedLevel, topic, essayText, correctedText, feedback } = req.body ?? {};
+  const { targetLevel, achievedLevel, topic, essayText, correctedText, feedback, notes } = req.body ?? {};
   const validLevels = ["A1", "A2", "B1", "B2"];
   if (!validLevels.includes(String(targetLevel))) {
     return res.status(400).json({ error: "invalid targetLevel" });
@@ -738,13 +738,36 @@ app.post("/api/essay/attempts", async (req, res) => {
     return res.status(400).json({ error: "correctedText required" });
   }
 
+  // Sanitize notes: must be an array of {issue, suggestion} string objects.
+  const cleanNotes = Array.isArray(notes)
+    ? notes
+        .filter(
+          (n: any) =>
+            n &&
+            typeof n.issue === "string" &&
+            typeof n.suggestion === "string"
+        )
+        .map((n: any) => ({
+          issue: n.issue.trim(),
+          suggestion: n.suggestion.trim(),
+        }))
+    : [];
+
   try {
     const result = await pool.query<{ id: number }>(
       `INSERT INTO essay_attempts
-         (target_level, achieved_level, topic, essay_text, corrected_text, feedback)
-       VALUES ($1, $2, $3, $4, $5, $6)
+         (target_level, achieved_level, topic, essay_text, corrected_text, feedback, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [targetLevel, achievedLevel, topic, essayText, correctedText, feedback || null]
+      [
+        targetLevel,
+        achievedLevel,
+        topic,
+        essayText,
+        correctedText,
+        feedback || null,
+        JSON.stringify(cleanNotes),
+      ]
     );
     return res.json({ ok: true, id: result.rows[0].id });
   } catch (e) {
@@ -784,7 +807,7 @@ app.get("/api/essay/attempts/:id", async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, target_level, achieved_level, topic, essay_text,
-              corrected_text, feedback, created_at
+              corrected_text, feedback, notes, created_at
        FROM essay_attempts
        WHERE id = $1`,
       [id]
@@ -799,6 +822,7 @@ app.get("/api/essay/attempts/:id", async (req, res) => {
       essayText: r.essay_text,
       correctedText: r.corrected_text,
       feedback: r.feedback,
+      notes: Array.isArray(r.notes) ? r.notes : [],
       createdAt: r.created_at,
     });
   } catch (e) {

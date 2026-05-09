@@ -21,9 +21,15 @@ interface EssayAttemptSummary {
   createdAt: string;
 }
 
+interface EssayNote {
+  issue: string;
+  suggestion: string;
+}
+
 interface EssayAttemptDetail extends EssayAttemptSummary {
   essayText: string;
   correctedText: string;
+  notes?: EssayNote[];
 }
 
 const TEXT = {
@@ -49,6 +55,7 @@ const TEXT = {
     yourEssay: "Your Essay",
     correctedVersion: "Corrected Version",
     feedbackLabel: "Feedback",
+    notesLabel: "Improvement Notes",
     topicLabel: "Topic",
   },
   no: {
@@ -73,6 +80,7 @@ const TEXT = {
     yourEssay: "Ditt essay",
     correctedVersion: "Korrigert versjon",
     feedbackLabel: "Tilbakemelding",
+    notesLabel: "Forbedringspunkter",
     topicLabel: "Emne",
   },
 };
@@ -272,6 +280,19 @@ export default function Stats() {
                               <h4>{t.correctedVersion}</h4>
                               <div className="stats-essay-text">{detail.correctedText}</div>
                             </div>
+                            {detail.notes && detail.notes.length > 0 && (
+                              <div className="stats-essay-block">
+                                <h4>{t.notesLabel}</h4>
+                                <ul className="stats-essay-notes">
+                                  {detail.notes.map((n, i) => (
+                                    <li key={i} className="stats-essay-note">
+                                      <span className="stats-essay-note-issue">{n.issue}</span>
+                                      <span className="stats-essay-note-suggestion">{n.suggestion}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>
