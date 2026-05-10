@@ -127,16 +127,19 @@ function ProgressChart({
     .slice(0, RECENT)
     .reverse()
     .map((q) => Math.round((q.correct / q.total) * 100));
-  const essaySeries = essays
+  const essaySeriesData = essays
     .slice(0, RECENT)
     .reverse()
-    .map((e) => LEVEL_TO_PCT[e.achievedLevel] ?? 0);
+    .map((e) => ({
+      pct: LEVEL_TO_PCT[e.achievedLevel] ?? 0,
+      level: e.achievedLevel,
+    }));
 
-  if (quizSeries.length === 0 && essaySeries.length === 0) return null;
+  if (quizSeries.length === 0 && essaySeriesData.length === 0) return null;
 
   const W = 200;
   const H = 100;
-  const PT = 6;
+  const PT = 8;
   const PR = 6;
   const PB = 14;
   const PL = 14;
@@ -150,20 +153,13 @@ function ProgressChart({
   const polyline = (series: number[]) =>
     series.map((v, i) => `${xFor(i, series.length)},${yFor(v)}`).join(" ");
 
-  const dots = (series: number[], color: string) =>
-    series.map((v, i) => (
-      <circle
-        key={i}
-        cx={xFor(i, series.length)}
-        cy={yFor(v)}
-        r="1.6"
-        fill={color}
-      />
-    ));
-
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="home-stats-chart" preserveAspectRatio="none">
-      {/* Y gridlines + labels at 25/50/75/100 */}
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="home-stats-chart"
+      preserveAspectRatio="xMidYMid meet"
+    >
+      {/* Y gridlines + percentage labels (left axis) */}
       {[0, 25, 50, 75, 100].map((p) => {
         const y = yFor(p);
         return (
@@ -183,6 +179,22 @@ function ProgressChart({
         );
       })}
 
+      {/* Right-side CEFR labels — A1=25, A2=50, B1=75, B2=100 */}
+      {Object.entries(LEVEL_TO_PCT).map(([level, p]) => (
+        <text
+          key={level}
+          x={W - PR + 1}
+          y={yFor(p) + 1.5}
+          fontSize="3.5"
+          textAnchor="start"
+          fill="#06a77d"
+          fontWeight="600"
+        >
+          {level}
+        </text>
+      ))}
+
+      {/* Quiz series: line + dots */}
       {quizSeries.length > 0 && (
         <>
           <polyline
@@ -193,10 +205,22 @@ function ProgressChart({
             strokeLinecap="round"
             points={polyline(quizSeries)}
           />
-          {dots(quizSeries, "#2a6fdb")}
+          {quizSeries.map((v, i) => (
+            <circle
+              key={`q-${i}`}
+              cx={xFor(i, quizSeries.length)}
+              cy={yFor(v)}
+              r="1.8"
+              fill="#2a6fdb"
+              stroke="#fff"
+              strokeWidth="0.4"
+            />
+          ))}
         </>
       )}
-      {essaySeries.length > 0 && (
+
+      {/* Essay series: line + dots + level labels above each dot */}
+      {essaySeriesData.length > 0 && (
         <>
           <polyline
             fill="none"
@@ -204,9 +228,34 @@ function ProgressChart({
             strokeWidth="0.9"
             strokeLinejoin="round"
             strokeLinecap="round"
-            points={polyline(essaySeries)}
+            points={polyline(essaySeriesData.map((d) => d.pct))}
           />
-          {dots(essaySeries, "#06a77d")}
+          {essaySeriesData.map((d, i) => {
+            const cx = xFor(i, essaySeriesData.length);
+            const cy = yFor(d.pct);
+            return (
+              <g key={`e-${i}`}>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r="2"
+                  fill="#06a77d"
+                  stroke="#fff"
+                  strokeWidth="0.5"
+                />
+                <text
+                  x={cx}
+                  y={cy - 3.2}
+                  fontSize="3.2"
+                  fontWeight="700"
+                  textAnchor="middle"
+                  fill="#06a77d"
+                >
+                  {d.level}
+                </text>
+              </g>
+            );
+          })}
         </>
       )}
     </svg>

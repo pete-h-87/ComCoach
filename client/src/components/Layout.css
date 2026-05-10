@@ -4,7 +4,7 @@
 }
 
 .sidebar {
-  width: 220px;
+  width: 240px;
   background: #1a1a2e;
   color: #fff;
   padding: 1.5rem 1rem;
@@ -12,6 +12,11 @@
   flex-direction: column;
   gap: 2rem;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-header {
@@ -162,6 +167,8 @@
     position: sticky;
     top: 0;
     z-index: 50;
+    height: auto;
+    overflow-y: visible;
   }
 
   .sidebar-header {

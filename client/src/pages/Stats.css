@@ -33,9 +33,79 @@
 
 .stats-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.75rem;
   margin-bottom: 0.85rem;
+}
+
+/* ---------- Quiz section: split left (data) / right (chart) ---------- */
+.stats-quiz-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.stats-quiz-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.stats-quiz-right {
+  position: sticky;
+  top: 1rem;
+}
+
+.stats-chart {
+  width: 100%;
+  background: #f3f6fb;
+  border-radius: 12px;
+  padding: 0.6rem;
+  display: block;
+  box-sizing: border-box;
+  min-height: 240px;
+}
+
+@media (max-width: 900px) {
+  .stats-quiz-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-quiz-right {
+    position: static;
+  }
+}
+
+/* ---------- Essay section: stacked stats left / chart right ---------- */
+.stats-essay-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+  margin-bottom: 0.85rem;
+}
+
+.stats-essay-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.stats-essay-right {
+  min-width: 0;
+}
+
+.stats-essay-left .stats-stat {
+  border-left-color: #06a77d;
+}
+
+@media (max-width: 900px) {
+  .stats-essay-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stats-stat {
@@ -92,10 +162,18 @@
   background: #2a6fdb;
 }
 
-.stats-row-mark--A1 { background: #d62828; }
-.stats-row-mark--A2 { background: #f77f00; }
-.stats-row-mark--B1 { background: #06a77d; }
-.stats-row-mark--B2 { background: #2a6fdb; }
+.stats-row-mark--A1 {
+  background: #d62828;
+}
+.stats-row-mark--A2 {
+  background: #f77f00;
+}
+.stats-row-mark--B1 {
+  background: #06a77d;
+}
+.stats-row-mark--B2 {
+  background: #2a6fdb;
+}
 
 .stats-row-pct {
   display: block;
@@ -156,7 +234,7 @@
 .stats-essay-detail {
   padding: 0.85rem 1rem 1rem;
   border-top: 1px solid #cfd6df;
-  background: #f3f6fb;
+  background: #d2dbe9;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -193,6 +271,38 @@
 
 .stats-essay-block--next h4 {
   color: #06a77d;
+}
+
+.essay-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.6rem;
+}
+
+.essay-open-in-session {
+  padding: 0.4rem 0.9rem;
+  border: none;
+  border-radius: 999px;
+  background: #06a77d;
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.05s,
+    box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.essay-open-in-session:hover {
+  background: #058a67;
+}
+
+.essay-open-in-session:active {
+  transform: translateY(1px);
 }
 
 .stats-essay-notes {

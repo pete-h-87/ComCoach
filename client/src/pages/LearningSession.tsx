@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useLang } from "../lib/lang";
 import "./LearningSession.css";
 
@@ -299,6 +300,20 @@ export default function LearningSession() {
       setText("");
     }
   }, [text, loadNewText]);
+
+  // Consume navigation state — when arriving here from the "Open in Session"
+  // button on the Essay/Stats next-level cards, auto-load the passed text.
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const incoming = (location.state as { text?: string } | null)?.text;
+    if (typeof incoming === "string" && incoming.trim()) {
+      loadNewText(incoming);
+      // Clear the state so a refresh or back-nav doesn't re-trigger the load.
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const handlePasteFromClipboard = useCallback(async () => {
     try {
@@ -651,7 +666,6 @@ export default function LearningSession() {
         className={`reading-panel${loadedText ? "" : " reading-panel--empty"}`}
         ref={panelRef}
         onDoubleClick={handleDoubleClick}
-        onMouseUp={handlePanelMouseUp}
       >
         {loadedText ? (
           <>

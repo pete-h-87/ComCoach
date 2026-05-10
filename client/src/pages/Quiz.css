@@ -18,6 +18,8 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  max-width: 560px;
+  margin: 0 auto;
 }
 
 .quiz-section-label {
@@ -41,7 +43,7 @@
 
 .quiz-option {
   padding: 1.1rem 1rem;
-  background: #e9eff7;
+  background: #aebccd;
   border: 2px solid transparent;
   border-radius: 12px;
   cursor: pointer;
@@ -49,7 +51,7 @@
   font-size: 1rem;
   font-weight: 600;
   color: #1a1a2e;
-  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s, box-shadow 0.15s;
   text-align: center;
   line-height: 1.3;
   display: flex;
@@ -61,16 +63,21 @@
 .quiz-option-desc {
   font-size: 0.78rem;
   font-weight: 500;
-  color: #5b6878;
+  color: #3d4a5c;
 }
 
 .quiz-option:hover {
-  background: #dbe4ee;
+  background: #c2cedd;
 }
 
 .quiz-option--selected {
   background: #ffffff;
   border-color: #2a6fdb;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.quiz-option--selected .quiz-option-desc {
+  color: #5b6878;
 }
 
 .quiz-option:disabled {
@@ -107,7 +114,7 @@
   font-weight: 700;
   letter-spacing: 0.5px;
   cursor: pointer;
-  align-self: flex-start;
+  align-self: center;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   transition: background 0.15s, transform 0.05s, box-shadow 0.15s;
 }
@@ -265,6 +272,7 @@
 /* ---------- Recent attempts panel ---------- */
 .quiz-recent {
   margin-top: 1rem;
+  width: 100%;
 }
 
 .quiz-recent-list {

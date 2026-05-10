@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLang } from "../lib/lang";
 import "./Essay.css";
 
@@ -24,6 +25,7 @@ const TEXT = {
     yourEssay: "Your Essay",
     feedbackLabel: "Feedback",
     loadingDetail: "Loading…",
+    openInSession: "Open in Session →",
     tryAnother: "Try Another Prompt",
     rewriteSame: "Rewrite Same Prompt",
     failedPrompt: "Failed to get a prompt.",
@@ -52,6 +54,7 @@ const TEXT = {
     yourEssay: "Ditt essay",
     feedbackLabel: "Tilbakemelding",
     loadingDetail: "Laster…",
+    openInSession: "Åpne i økt →",
     tryAnother: "Prøv et annet emne",
     rewriteSame: "Skriv om samme emne",
     failedPrompt: "Kunne ikke hente et emne.",
@@ -109,6 +112,11 @@ const LEVELS: Level[] = ["A1", "A2", "B1", "B2"];
 export default function Essay() {
   const { lang } = useLang();
   const t = TEXT[lang];
+  const navigate = useNavigate();
+  const openInSession = (text: string) => {
+    if (!text || !text.trim()) return;
+    navigate("/learning-session", { state: { text } });
+  };
   const [targetLevel, setTargetLevel] = useState<Level>("B1");
   const [prompt, setPrompt] = useState<PromptData | null>(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
@@ -337,6 +345,15 @@ export default function Essay() {
             <div className="essay-card essay-card--next">
               <h4>{t.nextLevelTitle(NEXT_LEVEL[result.level] as string)}</h4>
               <div className="essay-corrected">{result.nextLevelText}</div>
+              <div className="essay-card-actions">
+                <button
+                  type="button"
+                  className="essay-open-in-session"
+                  onClick={() => openInSession(result.nextLevelText)}
+                >
+                  {t.openInSession}
+                </button>
+              </div>
             </div>
           )}
 
@@ -435,6 +452,17 @@ export default function Essay() {
                                 </h4>
                                 <div className="essay-corrected">
                                   {detail.nextLevelText}
+                                </div>
+                                <div className="essay-card-actions">
+                                  <button
+                                    type="button"
+                                    className="essay-open-in-session"
+                                    onClick={() =>
+                                      openInSession(detail.nextLevelText ?? "")
+                                    }
+                                  >
+                                    {t.openInSession}
+                                  </button>
                                 </div>
                               </div>
                             )}
