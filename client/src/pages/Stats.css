@@ -184,6 +184,17 @@
   font-size: 0.9rem;
 }
 
+.stats-essay-block--next {
+  background: #e9f5ee;
+  border-left: 3px solid #06a77d;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+}
+
+.stats-essay-block--next h4 {
+  color: #06a77d;
+}
+
 .stats-essay-notes {
   list-style: none;
   padding: 0;

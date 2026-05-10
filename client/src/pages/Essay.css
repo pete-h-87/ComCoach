@@ -257,6 +257,14 @@
   white-space: pre-wrap;
 }
 
+.essay-card--next {
+  border-left: 4px solid #06a77d;
+}
+
+.essay-card--next h4 {
+  color: #06a77d;
+}
+
 .essay-notes {
   list-style: none;
   padding: 0;
@@ -348,14 +356,91 @@
 }
 
 .essay-recent-row {
+  background: #e9eff7;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  overflow: hidden;
+}
+
+.essay-recent-summary {
+  width: 100%;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.7rem;
   padding: 0.6rem 0.85rem;
-  background: #e9eff7;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background 0.15s;
+}
+
+.essay-recent-summary:hover {
+  background: #dbe4ee;
+}
+
+.essay-recent-detail {
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid #cfd6df;
+  background: #f3f6fb;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.essay-recent-detail .essay-card {
+  background: #ffffff;
+  padding: 0.7rem 0.9rem;
+  box-shadow: none;
+}
+
+.essay-recent-detail .essay-card h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #6b7a8e;
+}
+
+.essay-recent-detail .essay-corrected {
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.essay-recent-detail .essay-notes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.essay-recent-detail .essay-note {
+  padding: 0.55rem 0.75rem;
+  background: #d6e0eb;
   border-radius: 8px;
-  font-size: 0.9rem;
+  border-left: 3px solid #2a6fdb;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.essay-recent-detail .essay-note-issue {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #1a1a2e;
+  text-transform: capitalize;
+}
+
+.essay-recent-detail .essay-note-suggestion {
+  font-size: 0.88rem;
+  color: #333;
+  line-height: 1.4;
 }
 
 .essay-recent-level {
@@ -401,7 +486,7 @@
 }
 
 @media (max-width: 768px) {
-  .essay-recent-row {
+  .essay-recent-summary {
     grid-template-columns: auto 1fr;
   }
 

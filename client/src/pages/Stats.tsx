@@ -29,8 +29,11 @@ interface EssayNote {
 interface EssayAttemptDetail extends EssayAttemptSummary {
   essayText: string;
   correctedText: string;
+  nextLevelText?: string;
   notes?: EssayNote[];
 }
+
+const NEXT_LEVEL: Record<string, string> = { A1: "A2", A2: "B1", B1: "B2" };
 
 const TEXT = {
   en: {
@@ -54,6 +57,7 @@ const TEXT = {
     aimedFor: "aimed for",
     yourEssay: "Your Essay",
     correctedVersion: "Corrected Version",
+    nextLevelLabel: (lvl: string) => `Next-Level Example (${lvl})`,
     feedbackLabel: "Feedback",
     notesLabel: "Improvement Notes",
     topicLabel: "Topic",
@@ -79,6 +83,7 @@ const TEXT = {
     aimedFor: "siktet på",
     yourEssay: "Ditt essay",
     correctedVersion: "Korrigert versjon",
+    nextLevelLabel: (lvl: string) => `Eksempel på neste nivå (${lvl})`,
     feedbackLabel: "Tilbakemelding",
     notesLabel: "Forbedringspunkter",
     topicLabel: "Emne",
@@ -280,6 +285,12 @@ export default function Stats() {
                               <h4>{t.correctedVersion}</h4>
                               <div className="stats-essay-text">{detail.correctedText}</div>
                             </div>
+                            {detail.nextLevelText && NEXT_LEVEL[detail.achievedLevel] && (
+                              <div className="stats-essay-block stats-essay-block--next">
+                                <h4>{t.nextLevelLabel(NEXT_LEVEL[detail.achievedLevel])}</h4>
+                                <div className="stats-essay-text">{detail.nextLevelText}</div>
+                              </div>
+                            )}
                             {detail.notes && detail.notes.length > 0 && (
                               <div className="stats-essay-block">
                                 <h4>{t.notesLabel}</h4>

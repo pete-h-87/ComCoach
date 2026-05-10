@@ -88,15 +88,16 @@ CREATE TABLE quiz_attempts (
 );
 
 CREATE TABLE essay_attempts (
-  id              SERIAL PRIMARY KEY,
-  target_level    TEXT NOT NULL,
-  achieved_level  TEXT NOT NULL,
-  topic           TEXT NOT NULL,
-  essay_text      TEXT NOT NULL,
-  corrected_text  TEXT NOT NULL,
-  feedback        TEXT,
-  notes           JSONB,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id               SERIAL PRIMARY KEY,
+  target_level     TEXT NOT NULL,
+  achieved_level   TEXT NOT NULL,
+  topic            TEXT NOT NULL,
+  essay_text       TEXT NOT NULL,
+  corrected_text   TEXT NOT NULL,
+  feedback         TEXT,
+  notes            JSONB,
+  next_level_text  TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 

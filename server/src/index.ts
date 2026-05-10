@@ -320,6 +320,7 @@ app.post("/api/essay/grade", async (req, res) => {
     `- "level": one of "A1", "A2", "B1", "B2" reflecting the CEFR level demonstrated. Judge based on vocabulary range, sentence complexity, grammatical accuracy, and how on-topic the response is. Be honest.`,
     `- "feedback": 1-2 sentences of overall feedback in English. Plain, direct.`,
     `- "correctedText": the essay rewritten in correct Norwegian (Bokmål). Preserve the student's meaning and voice; fix grammar, spelling, word choice, and unnatural phrasing. Do not expand the content.`,
+    `- "nextLevelText": IF the achieved level is A1, A2, or B1, rewrite the SAME essay at the next CEFR level up (A1→A2, A2→B1, B1→B2). Use richer vocabulary, more varied sentence structure, and more idiomatic Norwegian appropriate for that higher level — but keep the original meaning and overall length. IF the achieved level is already B2, return an empty string "".`,
     `- "notes": an array of 2-5 short objects, each describing one specific issue. Each object has:`,
     `    - "issue": a short phrase (in English) naming the error type or pattern (e.g. "verb conjugation", "word order", "missing article").`,
     `    - "suggestion": a one-sentence tip in English on how to fix it, with the corrected Norwegian form quoted if helpful.`,
@@ -336,6 +337,7 @@ app.post("/api/essay/grade", async (req, res) => {
             level: { type: "STRING" },
             feedback: { type: "STRING" },
             correctedText: { type: "STRING" },
+            nextLevelText: { type: "STRING" },
             notes: {
               type: "ARRAY",
               items: {
@@ -348,7 +350,7 @@ app.post("/api/essay/grade", async (req, res) => {
               },
             },
           },
-          required: ["level", "feedback", "correctedText", "notes"],
+          required: ["level", "feedback", "correctedText", "nextLevelText", "notes"],
         },
         temperature: 0.2,
       },
@@ -358,10 +360,14 @@ app.post("/api/essay/grade", async (req, res) => {
 
     const parsed = JSON.parse(result.text);
     const levelOut = ["A1", "A2", "B1", "B2"].includes(parsed.level) ? parsed.level : "A2";
+    // Suppress nextLevelText if achieved B2 (no level above) — defensive in case the model ignores the prompt.
+    const nextLevelText =
+      levelOut === "B2" ? "" : String(parsed.nextLevelText ?? "").trim();
     return res.json({
       level: levelOut,
       feedback: String(parsed.feedback ?? "").trim(),
       correctedText: String(parsed.correctedText ?? "").trim(),
+      nextLevelText,
       notes: Array.isArray(parsed.notes)
         ? parsed.notes
             .filter((n: any) => n && typeof n.issue === "string" && typeof n.suggestion === "string")
@@ -720,7 +726,16 @@ app.get("/api/quiz/attempts", async (_req, res) => {
 // ---------- Essay attempt records ----------
 
 app.post("/api/essay/attempts", async (req, res) => {
-  const { targetLevel, achievedLevel, topic, essayText, correctedText, feedback, notes } = req.body ?? {};
+  const {
+    targetLevel,
+    achievedLevel,
+    topic,
+    essayText,
+    correctedText,
+    feedback,
+    notes,
+    nextLevelText,
+  } = req.body ?? {};
   const validLevels = ["A1", "A2", "B1", "B2"];
   if (!validLevels.includes(String(targetLevel))) {
     return res.status(400).json({ error: "invalid targetLevel" });
@@ -756,8 +771,8 @@ app.post("/api/essay/attempts", async (req, res) => {
   try {
     const result = await pool.query<{ id: number }>(
       `INSERT INTO essay_attempts
-         (target_level, achieved_level, topic, essay_text, corrected_text, feedback, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (target_level, achieved_level, topic, essay_text, corrected_text, feedback, notes, next_level_text)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
       [
         targetLevel,
@@ -767,6 +782,7 @@ app.post("/api/essay/attempts", async (req, res) => {
         correctedText,
         feedback || null,
         JSON.stringify(cleanNotes),
+        typeof nextLevelText === "string" && nextLevelText.trim() ? nextLevelText.trim() : null,
       ]
     );
     return res.json({ ok: true, id: result.rows[0].id });
@@ -807,7 +823,7 @@ app.get("/api/essay/attempts/:id", async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, target_level, achieved_level, topic, essay_text,
-              corrected_text, feedback, notes, created_at
+              corrected_text, feedback, notes, next_level_text, created_at
        FROM essay_attempts
        WHERE id = $1`,
       [id]
@@ -823,6 +839,7 @@ app.get("/api/essay/attempts/:id", async (req, res) => {
       correctedText: r.corrected_text,
       feedback: r.feedback,
       notes: Array.isArray(r.notes) ? r.notes : [],
+      nextLevelText: r.next_level_text || "",
       createdAt: r.created_at,
     });
   } catch (e) {

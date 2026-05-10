@@ -59,6 +59,9 @@ const TEXT = {
     statsLastQuiz: "Last quiz:",
     statsLastEssay: "Last essay:",
     statsEmpty: "No scores yet — finish a quiz or essay to start your history.",
+    chartLegendQuizzes: "Quizzes",
+    chartLegendEssays: "Essays",
+    chartProgress: "Progress over your last 10 attempts.",
   },
   no: {
     title: "Velkommen tilbake",
@@ -94,6 +97,9 @@ const TEXT = {
     statsLastQuiz: "Forrige quiz:",
     statsLastEssay: "Forrige essay:",
     statsEmpty: "Ingen resultater ennå — fullfør en quiz eller et essay for å starte historikken.",
+    chartLegendQuizzes: "Quizer",
+    chartLegendEssays: "Essayer",
+    chartProgress: "Fremgang over dine siste 10 forsøk.",
   },
 };
 
@@ -106,13 +112,114 @@ function formatDate(iso: string, lang: "en" | "no"): string {
   });
 }
 
+const LEVEL_TO_PCT: Record<string, number> = { A1: 25, A2: 50, B1: 75, B2: 100 };
+
+function ProgressChart({
+  quizzes,
+  essays,
+}: {
+  quizzes: QuizAttempt[];
+  essays: EssayAttempt[];
+}) {
+  const RECENT = 10;
+  // Most recent first → reverse so chart reads left-to-right oldest → newest.
+  const quizSeries = quizzes
+    .slice(0, RECENT)
+    .reverse()
+    .map((q) => Math.round((q.correct / q.total) * 100));
+  const essaySeries = essays
+    .slice(0, RECENT)
+    .reverse()
+    .map((e) => LEVEL_TO_PCT[e.achievedLevel] ?? 0);
+
+  if (quizSeries.length === 0 && essaySeries.length === 0) return null;
+
+  const W = 200;
+  const H = 100;
+  const PT = 6;
+  const PR = 6;
+  const PB = 14;
+  const PL = 14;
+  const innerW = W - PL - PR;
+  const innerH = H - PT - PB;
+
+  const xFor = (i: number, len: number) =>
+    len > 1 ? PL + (i * innerW) / (len - 1) : PL + innerW / 2;
+  const yFor = (v: number) => PT + innerH - (v / 100) * innerH;
+
+  const polyline = (series: number[]) =>
+    series.map((v, i) => `${xFor(i, series.length)},${yFor(v)}`).join(" ");
+
+  const dots = (series: number[], color: string) =>
+    series.map((v, i) => (
+      <circle
+        key={i}
+        cx={xFor(i, series.length)}
+        cy={yFor(v)}
+        r="1.6"
+        fill={color}
+      />
+    ));
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="home-stats-chart" preserveAspectRatio="none">
+      {/* Y gridlines + labels at 25/50/75/100 */}
+      {[0, 25, 50, 75, 100].map((p) => {
+        const y = yFor(p);
+        return (
+          <g key={p}>
+            <line
+              x1={PL}
+              y1={y}
+              x2={W - PR}
+              y2={y}
+              stroke="#cfd6df"
+              strokeWidth="0.3"
+            />
+            <text x={PL - 2} y={y + 1.5} fontSize="3.5" textAnchor="end" fill="#6b7a8e">
+              {p}
+            </text>
+          </g>
+        );
+      })}
+
+      {quizSeries.length > 0 && (
+        <>
+          <polyline
+            fill="none"
+            stroke="#2a6fdb"
+            strokeWidth="0.9"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            points={polyline(quizSeries)}
+          />
+          {dots(quizSeries, "#2a6fdb")}
+        </>
+      )}
+      {essaySeries.length > 0 && (
+        <>
+          <polyline
+            fill="none"
+            stroke="#06a77d"
+            strokeWidth="0.9"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            points={polyline(essaySeries)}
+          />
+          {dots(essaySeries, "#06a77d")}
+        </>
+      )}
+    </svg>
+  );
+}
+
 export default function Home() {
   const { lang } = useLang();
   const t = TEXT[lang];
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
   const [words, setWords] = useState<WordSummary[] | null>(null);
-  const [lastQuiz, setLastQuiz] = useState<QuizAttempt | null>(null);
-  const [lastEssay, setLastEssay] = useState<EssayAttempt | null>(null);
+  const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>([]);
+  const [essayAttempts, setEssayAttempts] = useState<EssayAttempt[]>([]);
 
   useEffect(() => {
     fetch("/api/sessions")
@@ -127,14 +234,17 @@ export default function Home() {
 
     fetch("/api/quiz/attempts")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data) => setLastQuiz(data.attempts?.[0] ?? null))
+      .then((data) => setQuizAttempts(data.attempts ?? []))
       .catch(() => {});
 
     fetch("/api/essay/attempts")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data) => setLastEssay(data.attempts?.[0] ?? null))
+      .then((data) => setEssayAttempts(data.attempts ?? []))
       .catch(() => {});
   }, []);
+
+  const lastQuiz = quizAttempts[0] ?? null;
+  const lastEssay = essayAttempts[0] ?? null;
 
   const sessionCount = sessions?.length ?? 0;
   const mostRecentSession = sessions?.[0];
@@ -254,6 +364,27 @@ export default function Home() {
             <span className="home-card-arrow">→</span>
           </div>
           <div className="home-card-cta">{t.statsCta}</div>
+
+          {quizAttempts.length === 0 && essayAttempts.length === 0 ? (
+            <div className="home-stats-chart-empty">
+              <span className="home-card-empty">{t.statsEmpty}</span>
+            </div>
+          ) : (
+            <>
+              <ProgressChart quizzes={quizAttempts} essays={essayAttempts} />
+              <div className="home-stats-legend">
+                <span className="home-stats-legend-item">
+                  <span className="home-stats-legend-swatch home-stats-legend-swatch--quiz" />
+                  {t.chartLegendQuizzes}
+                </span>
+                <span className="home-stats-legend-item">
+                  <span className="home-stats-legend-swatch home-stats-legend-swatch--essay" />
+                  {t.chartLegendEssays}
+                </span>
+              </div>
+            </>
+          )}
+
           <div className="home-card-detail">
             {lastQuiz || lastEssay ? (
               <>
@@ -275,9 +406,7 @@ export default function Home() {
                   </>
                 )}
               </>
-            ) : (
-              <span className="home-card-empty">{t.statsEmpty}</span>
-            )}
+            ) : null}
           </div>
         </Link>
       </div>

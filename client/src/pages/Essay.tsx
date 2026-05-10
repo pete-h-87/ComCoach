@@ -19,7 +19,11 @@ const TEXT = {
     submit: "Submit for Grading",
     grading: "Grading…",
     correctedTitle: "Corrected Version",
+    nextLevelTitle: (lvl: string) => `Next-Level Example (${lvl})`,
     notesTitle: "Notes",
+    yourEssay: "Your Essay",
+    feedbackLabel: "Feedback",
+    loadingDetail: "Loading…",
     tryAnother: "Try Another Prompt",
     rewriteSame: "Rewrite Same Prompt",
     failedPrompt: "Failed to get a prompt.",
@@ -43,7 +47,11 @@ const TEXT = {
     submit: "Send inn for vurdering",
     grading: "Vurderer…",
     correctedTitle: "Korrigert versjon",
+    nextLevelTitle: (lvl: string) => `Eksempel på neste nivå (${lvl})`,
     notesTitle: "Notater",
+    yourEssay: "Ditt essay",
+    feedbackLabel: "Tilbakemelding",
+    loadingDetail: "Laster…",
     tryAnother: "Prøv et annet emne",
     rewriteSame: "Skriv om samme emne",
     failedPrompt: "Kunne ikke hente et emne.",
@@ -69,8 +77,16 @@ interface GradeResult {
   level: Level;
   feedback: string;
   correctedText: string;
+  nextLevelText: string;
   notes: GradeNote[];
 }
+
+const NEXT_LEVEL: Record<Level, Level | null> = {
+  A1: "A2",
+  A2: "B1",
+  B1: "B2",
+  B2: null,
+};
 
 interface RecentEssay {
   id: number;
@@ -78,6 +94,14 @@ interface RecentEssay {
   achievedLevel: Level;
   topic: string;
   createdAt: string;
+}
+
+interface EssayDetail extends RecentEssay {
+  essayText: string;
+  correctedText: string;
+  feedback: string | null;
+  nextLevelText?: string;
+  notes?: GradeNote[];
 }
 
 const LEVELS: Level[] = ["A1", "A2", "B1", "B2"];
@@ -95,6 +119,8 @@ export default function Essay() {
   const [recentEssays, setRecentEssays] = useState<RecentEssay[]>([]);
   const [themes, setThemes] = useState<string[]>([]);
   const [selectedTheme, setSelectedTheme] = useState("");
+  const [expandedEssayId, setExpandedEssayId] = useState<number | null>(null);
+  const [essayDetails, setEssayDetails] = useState<Record<number, EssayDetail>>({});
 
   const loadRecentEssays = () => {
     fetch("/api/essay/attempts")
@@ -103,6 +129,25 @@ export default function Essay() {
       .catch(() => {
         // Non-fatal
       });
+  };
+
+  const toggleEssayExpand = async (id: number) => {
+    if (expandedEssayId === id) {
+      setExpandedEssayId(null);
+      return;
+    }
+    setExpandedEssayId(id);
+    if (!essayDetails[id]) {
+      try {
+        const res = await fetch(`/api/essay/attempts/${id}`);
+        if (res.ok) {
+          const data: EssayDetail = await res.json();
+          setEssayDetails((prev) => ({ ...prev, [id]: data }));
+        }
+      } catch {
+        // silent
+      }
+    }
   };
 
   const fetchPrompt = async (level: Level, theme: string = selectedTheme) => {
@@ -171,6 +216,7 @@ export default function Essay() {
           correctedText: data.correctedText,
           feedback: data.feedback,
           notes: data.notes,
+          nextLevelText: data.nextLevelText,
         }),
       }).then(() => loadRecentEssays()).catch(() => {
         // Silent — scoring failure shouldn't block the UI.
@@ -287,6 +333,13 @@ export default function Essay() {
             </div>
           )}
 
+          {result.nextLevelText && NEXT_LEVEL[result.level] && (
+            <div className="essay-card essay-card--next">
+              <h4>{t.nextLevelTitle(NEXT_LEVEL[result.level] as string)}</h4>
+              <div className="essay-corrected">{result.nextLevelText}</div>
+            </div>
+          )}
+
           {result.notes.length > 0 && (
             <div className="essay-card">
               <h4>{t.notesTitle}</h4>
@@ -325,25 +378,88 @@ export default function Essay() {
         <div className="essay-recent">
           <p className="essay-section-label">{t.recentEssays}</p>
           <ul className="essay-recent-list">
-            {recentEssays.map((r) => (
-              <li key={r.id} className="essay-recent-row">
-                <span className={`essay-recent-level essay-recent-level--${r.achievedLevel}`}>
-                  {r.achievedLevel}
-                </span>
-                <div className="essay-recent-meta">
-                  <span className="essay-recent-topic">{r.topic}</span>
-                  <span className="essay-recent-aim">
-                    {t.aimedFor} {r.targetLevel}
-                  </span>
-                </div>
-                <span className="essay-recent-date">
-                  {new Date(r.createdAt).toLocaleDateString(
-                    lang === "no" ? "nb-NO" : undefined,
-                    { month: "short", day: "numeric" }
+            {recentEssays.map((r) => {
+              const isOpen = expandedEssayId === r.id;
+              const detail = essayDetails[r.id];
+              return (
+                <li key={r.id} className="essay-recent-row">
+                  <button
+                    type="button"
+                    className="essay-recent-summary"
+                    onClick={() => toggleEssayExpand(r.id)}
+                    aria-expanded={isOpen}
+                  >
+                    <span className={`essay-recent-level essay-recent-level--${r.achievedLevel}`}>
+                      {r.achievedLevel}
+                    </span>
+                    <div className="essay-recent-meta">
+                      <span className="essay-recent-topic">{r.topic}</span>
+                      <span className="essay-recent-aim">
+                        {t.aimedFor} {r.targetLevel}
+                      </span>
+                    </div>
+                    <span className="essay-recent-date">
+                      {new Date(r.createdAt).toLocaleDateString(
+                        lang === "no" ? "nb-NO" : undefined,
+                        { month: "short", day: "numeric" }
+                      )}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="essay-recent-detail">
+                      {!detail ? (
+                        <p className="essay-status">{t.loadingDetail}</p>
+                      ) : (
+                        <>
+                          {detail.feedback && (
+                            <div className="essay-card">
+                              <h4>{t.feedbackLabel}</h4>
+                              <div className="essay-corrected">{detail.feedback}</div>
+                            </div>
+                          )}
+                          <div className="essay-card">
+                            <h4>{t.yourEssay}</h4>
+                            <div className="essay-corrected">{detail.essayText}</div>
+                          </div>
+                          <div className="essay-card">
+                            <h4>{t.correctedTitle}</h4>
+                            <div className="essay-corrected">{detail.correctedText}</div>
+                          </div>
+                          {detail.nextLevelText &&
+                            NEXT_LEVEL[detail.achievedLevel] && (
+                              <div className="essay-card essay-card--next">
+                                <h4>
+                                  {t.nextLevelTitle(
+                                    NEXT_LEVEL[detail.achievedLevel] as string
+                                  )}
+                                </h4>
+                                <div className="essay-corrected">
+                                  {detail.nextLevelText}
+                                </div>
+                              </div>
+                            )}
+                          {detail.notes && detail.notes.length > 0 && (
+                            <div className="essay-card">
+                              <h4>{t.notesTitle}</h4>
+                              <ul className="essay-notes">
+                                {detail.notes.map((n, i) => (
+                                  <li key={i} className="essay-note">
+                                    <span className="essay-note-issue">{n.issue}</span>
+                                    <span className="essay-note-suggestion">
+                                      {n.suggestion}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
-                </span>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
