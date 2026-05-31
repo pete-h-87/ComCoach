@@ -459,15 +459,15 @@ export default function LearningSession() {
   }, [lookupSelection]);
 
   // Handles drag-selected phrases (multi-word). Single-word selections are left to onDoubleClick.
-  const handlePanelMouseUp = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) return;
-    const text = selection.toString().trim();
-    if (!text || !text.includes(" ")) return;
-    // Skip oversized selections (e.g. accidental triple-click on a long paragraph).
-    if (text.split(/\s+/).length > 15) return;
-    lookupSelection(text, selection.getRangeAt(0));
-  }, [lookupSelection]);
+  // const handlePanelMouseUp = useCallback(() => {
+  //   const selection = window.getSelection();
+  //   if (!selection || selection.isCollapsed) return;
+  //   const text = selection.toString().trim();
+  //   if (!text || !text.includes(" ")) return;
+  //   // Skip oversized selections (e.g. accidental triple-click on a long paragraph).
+  //   if (text.split(/\s+/).length > 15) return;
+  //   lookupSelection(text, selection.getRangeAt(0));
+  // }, [lookupSelection]);
 
   const retryAnnotation = useCallback((index: number) => {
     setAnnotations((prev) =>
