@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLang } from "../lib/lang";
 import "./LearningSession.css";
 import "./WordList.css";
@@ -13,6 +14,7 @@ const TEXT = {
     showNorwegian: "Show Norwegian",
     showEnglish: "Show English",
     fromSession: "From session:",
+    practice: "Practice →",
   },
   no: {
     title: "Min ordliste",
@@ -23,6 +25,7 @@ const TEXT = {
     showNorwegian: "Vis norsk",
     showEnglish: "Vis engelsk",
     fromSession: "Fra økt:",
+    practice: "Øv →",
   },
 };
 
@@ -58,6 +61,7 @@ function colorForWord(word: string): string {
 export default function WordList() {
   const { lang } = useLang();
   const t = TEXT[lang];
+  const navigate = useNavigate();
   const [words, setWords] = useState<SavedWord[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [activeWord, setActiveWord] = useState<SavedWord | null>(null);
@@ -136,6 +140,12 @@ export default function WordList() {
             <div className="annotation-body">
               {showEnglish ? activeWord.definitionEn : activeWord.definitionNo}
             </div>
+            <button
+              className="word-popup-practice"
+              onClick={() => navigate("/sentences", { state: { word: activeWord.word } })}
+            >
+              {t.practice}
+            </button>
             {activeWord.sessionTheme && (
               <div className="word-popup-context">
                 {t.fromSession} {activeWord.sessionTheme}

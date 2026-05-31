@@ -13,6 +13,7 @@ const LABELS = {
     essay: "Short Essay",
     stats: "Scores",
     wordList: "My Word List",
+    sentences: "Sentences",
   },
   no: {
     home: "Hjem",
@@ -22,6 +23,7 @@ const LABELS = {
     essay: "Kort essay",
     stats: "Resultater",
     wordList: "Min ordliste",
+    sentences: "Setninger",
   },
 };
 
@@ -56,6 +58,7 @@ export default function Layout() {
           <li><NavLink to="/essay">{t.essay}</NavLink></li>
           <li><NavLink to="/stats">{t.stats}</NavLink></li>
           <li><NavLink to="/word-list">{t.wordList}</NavLink></li>
+          <li><NavLink to="/sentences">{t.sentences}</NavLink></li>
         </ul>
         <div className="sidebar-footer">
           <div className="lang-toggle" role="group" aria-label="Language">

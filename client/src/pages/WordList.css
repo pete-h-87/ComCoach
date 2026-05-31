@@ -132,6 +132,26 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
+.word-popup-practice {
+  display: block;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0;
+  border: none;
+  border-radius: 6px;
+  background: #2a6fdb;
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.word-popup-practice:hover {
+  background: #1b5fc0;
+}
+
 .word-popup-context {
   margin-top: 0.6rem;
   font-size: 0.78rem;

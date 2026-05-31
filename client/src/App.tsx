@@ -7,6 +7,7 @@ import Quiz from "./pages/Quiz";
 import Essay from "./pages/Essay";
 import Stats from "./pages/Stats";
 import WordList from "./pages/WordList";
+import Sentences from "./pages/Sentences";
 import { LangProvider } from "./lib/lang";
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="/essay" element={<Essay />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/word-list" element={<WordList />} />
+            <Route path="/sentences" element={<Sentences />} />
           </Route>
         </Routes>
       </BrowserRouter>
