@@ -22,6 +22,8 @@ const TEXT = {
     failed: "Check failed. Try again.",
     networkError: "Network error.",
     pickFromList: "or pick from your word list →",
+    wordButton1: "Random word",
+    wordButton2: "Choose word",
   },
   no: {
     title: "Setninger",
@@ -41,6 +43,8 @@ const TEXT = {
     failed: "Sjekk mislyktes. Prøv igjen.",
     networkError: "Nettverksfeil.",
     pickFromList: "eller velg fra ordlisten din →",
+    wordButton1: "Tilfeldig ord",
+    wordButton2: "Velg ord",
   },
 };
 
@@ -71,6 +75,14 @@ export default function Sentences() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
+
+  const handleRandomWord = () => {
+    
+  };
+
+  const handlePickWord = () => {
+    navigate("/word-list");
+  };
 
   const handleSubmit = async () => {
     if (!word.trim() || !sentence.trim() || checking) return;
@@ -126,9 +138,25 @@ export default function Sentences() {
               placeholder={t.wordPlaceholder}
               disabled={checking || !!result}
             />
-            <a className="sentences-pick-link" href="/word-list">
+            {/* <a className="sentences-pick-link" href="/word-list">
               {t.pickFromList}
-            </a>
+            </a> */}
+          </div>
+          <div className="sentences-word-buttons">
+            <button
+              type="button"
+              className="sentences-word-button"
+              onClick={handleRandomWord}
+            >
+              {t.wordButton1}
+            </button>
+            <button
+              type="button"
+              className="sentences-word-button"
+              onClick={handlePickWord}
+            >
+              {t.wordButton2}
+            </button>
           </div>
         </div>
 
@@ -163,14 +191,18 @@ export default function Sentences() {
         {error && <p className="sentences-error">{error}</p>}
 
         {result && (
-          <div className={`sentences-result ${result.correct ? "sentences-result--correct" : "sentences-result--incorrect"}`}>
+          <div
+            className={`sentences-result ${result.correct ? "sentences-result--correct" : "sentences-result--incorrect"}`}
+          >
             <div className="sentences-verdict">
               {result.correct ? t.correct : t.incorrect}
             </div>
 
             {!result.correct && result.correctedSentence && (
               <div className="sentences-corrected">
-                <span className="sentences-result-label">{t.correctedLabel}:</span>
+                <span className="sentences-result-label">
+                  {t.correctedLabel}:
+                </span>
                 <p>{result.correctedSentence}</p>
               </div>
             )}
@@ -184,7 +216,10 @@ export default function Sentences() {
               <button className="sentences-submit" onClick={resetSentence}>
                 {t.tryAnother}
               </button>
-              <button className="sentences-submit sentences-submit--secondary" onClick={resetAll}>
+              <button
+                className="sentences-submit sentences-submit--secondary"
+                onClick={resetAll}
+              >
                 {t.changeWord}
               </button>
             </div>

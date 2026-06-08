@@ -97,6 +97,29 @@
   border-color: #2a6fdb;
 }
 
+.sentences-word-buttons {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 0.7rem;
+}
+
+.sentences-word-button {
+  padding: 0.6rem 1.4rem;
+  border: none;
+  border-radius: 10px;
+  background: #2a6fdb;
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.05s;
+}
+
+.sentences-word-button:hover:not(:disabled) {
+  background: #1b5fc0;
+}
+
 .sentences-submit {
   align-self: flex-start;
   padding: 0.7rem 1.8rem;
@@ -150,7 +173,7 @@
 
 .sentences-result--incorrect {
   background: rgba(230, 57, 70, 0.12);
-  border: 2px solid #e63946;
+  border: 2px solid #6e1d24;
 }
 
 .sentences-verdict {
@@ -163,7 +186,7 @@
 }
 
 .sentences-result--incorrect .sentences-verdict {
-  color: #e63946;
+  color: #6e1d24;
 }
 
 .sentences-result-label {
